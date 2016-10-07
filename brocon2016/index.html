@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Bro Befriends Suricata</title>
+
+		<meta name="author" content="Michal Purzynski">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+<!-- <link rel="stylesheet" href="css/print/pdf.css"> -->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<p><h4><span style="color: #CC5600;">Bro Befriends Suricata</span></h4></p>
+                    <p><h4><span style="color: #CC5600;">Suricata and Bro fighting malware together</span></h4></p>
+					<p>
+						<small>Created by <a href="https://log.nusec.eu">Michal Purzynski</a> / <a href="http://twitter.com/michalpurzynski">@michalpurzynski</a></small>
+					</p>
+					<p>
+						<small><a href="https://github.com/michalpurzynski/">Scripts are here - https://github.com/michalpurzynski</a></small>
+                    <aside class="notes">
+                        Hello, I'm MP from the Mozilla Enterprise Information Security team. I will be talking about two great friends at Mozilla - Bro and Suricata.
+                        Throught the presentation I will show some Bro scripts and Suricata rules, they are all opensource and you can find them on github, so feel free to take a look.
+                    </aside>
+					</p>
+				</section>
+
+                <section>
+                    <img src="statics/polandeurope.png" width="100%" />
+                </section>
+
+                <section>
+                    <img src="statics/polandtexas.png" width="100%" />
+                </section>
+
+                <section>
+                    <h3>whoami</h3>
+                     <span> <p>Part of the team doing enterprise information security</p></span>
+                     <span> <p>We don't do product security</p></span>
+                     <span> <p>We monitor our infrastructure</p></span>
+                     <span> <p>We respond to security investigations and incidents</p></span>
+                     <span> <p>We help developers design and implement security controls</p></span>
+                     <span> <p>We build tools & services to keep users secure</p></span>
+                     <span style="color: #CC5600;"><p>"A human wireshark". A threat. Management.</p></span>
+                </section>
+
+                <section>
+                        <aside class="notes">
+                            We have started with nothing else than a simple netflow logs and went through a proof of concept in a single data center to this.
+                            Each location, usually an office, is completely independent. We do not strech Bro cluster between countries and continents. It would not be wise to do so.
+                            I hope Broker will help to change that. We have given up some global state and detection capabilities in exchange for a cluster of independent, stable systems, where a single node cannot bring down others and does not depend on the health of a global connections.
+                            The downside is, we have limited our corelation - there is no global state anymore (think scan detection).
+                            MozDef helps a bit here.
+                        </aside>
+                    <h3>NSM in Mozilla</h3>
+                        <table>
+                                <tr>
+                                    <td>9</td><td>Offices</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td><td>Continents</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td><td>Datacenter</td>
+                                </tr>
+                                <tr>
+                                    <td>X</td><td>AWS</td>
+                                </tr>
+                        </table>
+                        <p>
+                            Around 20 sensors and who knows how many workers :-)
+                        </p>
+                        <p>
+                            From 2012. Netoptics, now Arista.
+                        </p>
+                </section>
+
+                <section>
+                    <h3>Mozilla contributions to Bro IDS</h3>
+                    <span class="fragment"><p>PR. Tons of PR.</p></span>
+                    <span class="fragment"><p>Largest (problematic) installation ever. AUS?</p></span>
+                    <span class="fragment"><p>Heka-Lua scripts for parsing logs</p></span>
+                    <span class="fragment"><p>Tons of bug reports (SSL, hello Bugzilla)</p></span>
+                    <span class="fragment"><p>76 scripts - 4200 LoC - OpenSource</p></span>
+                    <span class="fragment"><p>$$$$ 200 000</p></span>
+                    <span class="fragment"><p>Myricom plugin (+Seth)</p></span>
+                    <span class="fragment"><p>Ansible playbooks - OpenSource</p></span>
+                    <aside class="notes">
+                        I dare to say that we support Bro. A lot. Ask those that had to listen to me talking about 2.5 features, like the refreshed Intel Framework, yesterday.
+                        But before I talk about what I'm presenting here, let me try to limit the damage from those paper objects that the Bro Team will be throwing at me.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>We have a secret</h3>
+                    <span class="fragment" style="color: #CC5600;"><h2>I will share a secret</h2></span>
+                    <span class="fragment"><h4>Is shared secret still a secret?</h4></span>
+                </section>
+
+                <section>
+                    <h3>Bro is not the only IDS we use!!</h3>
+                    <span class="fragment" ><p>We use Suricata too</p></span>
+                    <span class="fragment"> <p><img src="statics/suricata-suricatta-2.jpg" width=25%/></p><span>
+                    <span class="fragment" ><p>Actually, a whole mob</p></span>
+                    <span class="fragment"> <p><img src="statics/Meerkat-family-group.jpg" width=25%/></p><span>
+                    <aside class="notes">
+                        Why Suricata, you would ask?
+                        Because not Snort.
+                        Snort is what we have started with. It has been a second IDS in Mozilla, after someone long before me purchased subscription of Juniper IDS, which left the organization together with said person.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>BTW - what is an IDS?</h3>
+                    <span class="fragment" style="color: #CC5600;"><p>An intrusion detection system (IDS) is a device or software application that monitors network or system activities for malicious activities or policy violations and produces reports to a management station.</p></span>
+                </section>
+
+                <section>
+                    <h3>Keywords</h3>
+                    <p>malicious activity <span class="fragment" style="color: #8AB638;" ><-- known indicators</span></p>
+                    <p>policy violations <span class="fragment" style="color: #8AB638;"><-- known rules</span></p>
+                    <p>Missing? 'anomalies' <span class="fragment" style="color: #8AB638;"><-- unknown</span></p>
+                    <span class="fragment" style="color:#CC5600;"> <p>No perfect tool for the job</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>NSA? FSB? Ransomware and old Java? Risk managent FTW!!</p></span>
+                    <aside class="notes">
+                        There are many different types of malicious activities. Some are known and some are not. I know that all kinds of ATP are super sexy, but while hunting for NSA or FSB in your network, let's also focus on known types of malware. It all comes down to risk management. Maybe your biggest threat is ATP such as NSA or FSB, but maybe that is Ransomware (where NSM capabilities are limited, because it can be too late). I detect and ask End User Services team to wipe all kinds of spyware almost daily.
+                        Your NSM can also help a lot for policy violations. It is not here to replace traditional host based solutions, but to add missing pieces. You can't run your agent on every device. You cannot run your agent on devices you don't know about.
+                        NSM is finally there to tell you that something looks suspicious and maybe should be investigated.
+                        You have to adjust the NSM to the risk profile that your organization carries.
+                    </aside>
+                </section>
+
+                <section>
+                    <img src="statics/pyramide.png.001.png" width="100%" />
+                    <aside class="notes">
+                        We collect information from a number of sources. We eat many kind of logs, including system logs, application logs. We augment it with information from our agents, such as Rapid7 and Auditd. Endpoint investigation is handled by MIG. And finally, we ship everything into a single system for correlation.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>
+                        Can't get enough
+                    </h3>
+                    <img src="statics/frontend_processing.png" width="100%" />
+                    <aside class="notes">
+                        We have plugins everywhere. Adding a new log source and another custom protocol is as easy as writing a piece of python code that sends messages to RabbitMQ. You can modify every message before it gets written to Elastic Search with a number of plugins. Same is true for alerts - they can be consumed with independent pieces of python, without touching ES, can be modified before written to ES or only on the way to external tool.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>
+                        Speaking about tools
+                    </h3>
+                    <img src="statics/MozDefAlerts.png" width="100%" />
+                </section>
+
+                <section>
+                    <h3>
+                        Speaking about tools
+                    </h3>
+                    <img src="statics/MozDefAttackerGlobe.png" width="100%" />
+                </section>
+
+                <section>
+                    <h3>
+                        Speaking about tools
+                    </h3>
+                    <img src="statics/MozDefAttackerOgres.png" width="100%" />
+                </section>
+
+                <section>
+                    <h3>
+                        Speaking about tools
+                    </h3>
+                    <img src="statics/Mig-console.png" width="100%" />
+                    <aside class="notes">
+                        The important thing about MIG is that it is privacy preserving. You can ask it to look for a file or a pattern in a file, or a presence of a process but you cannot ask it to give you a file content.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>
+                        Speaking about tools
+                    </h3>
+                    <pre>
+                        <code>
+{
+"category": "execve",
+"processid": "0",
+"receivedtimestamp": "2014-03-01T15:22:54.457658+00:00",
+"severity": "INFO",
+"utctimestamp": "2014-03-01T15:22:54+00:00",
+"tags": ["audisp-json", "2.0.0", "audit"],
+"timestamp": "2014-03-01T15:22:54+00:00",
+"hostname": "admin1a.private.scl3.mozilla.com",
+"mozdefhostname": "mozdef2.private.scl3.mozilla.com",
+"summary": "Execve: nmap 63.245.214.53 -p22 -Pn",
+"processname": "audisp-json",
+"details": {
+"fsuid": "3407",
+"tty": "(none)",
+"uid": "3407",
+"process": "/usr/bin/nmap",
+"auditkey": "exec",
+"pid": "28723",
+"processname": "nmap",
+"session": "75981",
+"dev": "fd:01",
+"sgid": "3407",
+"auditserial": "6493840",
+"inode": "4328281",
+"ouid": "0",
+"ogid": "0",
+"suid": "3407",
+"originaluid": "3407",
+"gid": "3407",
+"originaluser": "mpurzynski",
+"cwd": "/home/mpurzynski",
+"parentprocess": "bash",
+"euid": "3407",
+"path": "/usr/bin/nmap",
+"rdev": "00:00",
+"fsgid": "3407",
+"egid": "3407",
+"command": "nmap 63.245.214.53 -p22 -Pn",
+"mode": "0100755",
+"user": "mpurzynski"
+}
+}
+                        </code>
+                    </pre>
+                    <aside class="notes">
+                        We log every execution. It does not work on a standard Linux system if you don't do some magic correlation, that is done by a plugin for Audit. Logs are shipped, as you can see, as pure JSON.
+                        This lets us have all the information we want and we don't need to use any hacky SSH patches that most likely introduce vulnerabilities.
+                    </aside>
+                </section>
+
+
+                <section>
+                    <h3>Basic IDS functionality</h3>
+                    <p>Stream reconstruction</p>
+                    <p>Protocol level analysis</p>
+                    <p>Pattern recognition</p>
+                    <p>Decompressing content (HTTP)</p>
+                    <aside class="notes">
+                        So let's take a look at the most basic operations that every IDS does. We expect it to do stream reconstruction. Gone are the days where IDS was looking at each packet separately, now we are looking for flows. We want IDS to be protocol aware, too, so it has to recognize your http or SSL no matter on which port and be able to report you that it found something unusual.
+                        Of course there is some pattern recognition and that thing must be fast. Pattern matching in Suricta can done by a Hyperscan library that comes from Intel and uses SIMD instructions.
+                        I want my IDS to decompress streams on the fly, of course.
+                    </aside>
+                </section>
+
+                <section>
+                    <img src="statics/suricata-workers-af-packet-en.png" width="100%" />
+                    <aside class="notes">
+                        This is one of many configurations possible for Suricata. It is called workers mode. What it means is that for the same hash value, calculated from source/destination ports and IP addresses packets are considered to be parts of the same flow, and the same flow is treated from start to finish in the same thread and possibly, depending on the configuration, on the same CPU. It is even possible to find the network card queue to cpu to worker thread to stay on the same cache line and avoid TLB misses.
+                        There are other runmodes, too, like autofp, where acq/decode/flow is in a separate thread than the stream/detect/output stage. This allows for some intelligent flow load balancing, with the cost that each packet traverses two threads. It could help somewhat in the case where a single giant flow saturates a single core, as we sometimes see in Bro, but we still keep adding new flows to this already saturated core, because that's the hash result.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>Suricata in 2016</h3>
+                    <span class="fragment" <p>IDS and IPS (nfq)</p></span>
+                    <span class="fragment" <p>Multi threading</p></span>
+                    <span class="fragment" <p>Protocol identification (port independent)</p></span>
+                    <span class="fragment" <p>File identification and extraction, hash calculation</p></span>
+                    <span class="fragment" <p>Deep TLS analysis</p></span>
+                    <span class="fragment" <p>Application layer logs (in JSON)</p></span>
+                    <span class="fragment" <p>Lua scripting</p></span>
+                </section>
+
+                <section>
+                    <code>
+                        alert <span style="color: #8AB638;">http</span> $HOME_NET any -> $EXTERNAL_NET any (msg:"ET CURRENT_EVENTS Unknown Malicious Second Stage Download URI Struct Sept 15 2015"; flow:established,to_server; <span style="color: #8AB638;">urilen:>46;</span> content:".php?id="; <span style="color: #8AB638;">http_uri;</span> fast_pattern:only; content:"&rnd="; <span style="color: #8AB638;">http_uri;</span> pcre:"/\.php\?id=[0-9A-F]{32,}&rnd=\d+$/U"; content:!"Referer|3a|"; <span style="color: #8AB638;">http_header;</span> classtype:trojan-activity; sid:2021787; rev:2;)
+                    </code>
+                    <span class="fragment" style="color:#CC5600;"> <h3 style="color:#CC5600;">Look mum - no ports!!</h3> </span>
+                    <aside class="notes">
+                        As you can see this rule has no hardcoded ports. It comes from emerging threats open ruleset. I really like the fact that they stay in touch with the Suricata team and use the newest features to improve detection accuracy.
+                    </aside>
+                </section>
+
+                <section>
+                    <code>
+                        alert <span style="color: #8AB638;">http</span> $EXTERNAL_NET any -> $HOME_NET any (msg:"ET CURRENT_EVENTS Cryptowall docs campaign Sept 2015 encrypted binary (1)"; flow:established,to_client; <span style="color: #8AB638;">file_data; content:"|23 31 f9 4f 62 57 73 67|";</span> within:8; flowbits:set,et.exploitkitlanding; classtype:trojan-activity; sid:2021778; rev:2;)
+                    </code>
+                    <span class="fragment" style="color:#CC5600;"> <h3 style="color:#CC5600;">Matching file_data like a B^HPro</h3> </span>
+                </section>
+
+                <section>
+                    <h3>Event logs</h3>
+                    <pre>
+                    <code>
+{
+    "timestamp": "2009-11-24T21:27:09.534255",
+    "event_type": "alert",
+    "src_ip": "192.168.2.7",
+    "src_port": 1041,
+    "dest_ip": "x.x.250.50",
+    "dest_port": 80,
+    "proto": "TCP",
+    "alert": {
+        "action": "allowed",
+        "gid": 1,
+        "signature_id" :2001999,
+        "rev": 9,
+        "signature": "ET MALWARE BTGrab.com Spyware Downloading Ads",
+        "category": "A Network Trojan was detected",
+        "severity": 1
+    }
+}
+"http": {
+    "hostname": "direkte.vg.no",
+    "url":".....",
+    "http_user_agent": "<User-Agent>",
+    "http_content_type": "application\/json",
+    "http_refer": "http:\/\/www.vg.no\/",
+    "http_method": "GET",
+    "protocol": "HTTP\/1.1",
+    "status":"200",
+    "length":310
+}
+"dns": {
+    "type": "query",
+    "id": 16000,
+    "rrname": "twitter.com",
+    "rrtype":"A" 
+}
+"dns": {
+    "type": "answer",
+    "id":16000,
+    "rrname": "twitter.com",
+    "rrtype":"A",
+    "ttl":8,
+    "rdata": "199.16.156.6" 
+}
+                    </code>
+                    </pre>
+                </section>
+
+                <section>
+                    <h3>
+                        Lua is cool. And rich, too.
+                    </h3>
+                    <pre>
+                        <code>
+--[[
+Detection for CVE-2016-0056 expects DOCX
+
+This lua script can be run standalone and verbosely on a Flash file with
+echo "run()" | luajit -i script name docx file
+
+Francis Trudeau
+With no help from Darien even though he loves LUA.
+--]]
+
+require("zip")
+
+function init (args)
+    local needs = {}
+    needs["http.response_body"] = tostring(true)
+    return needs
+end
+
+--http://snippets.luacode.org/?p=snippets/String_to_Hex_String_68
+function HexDumpString(str,spacer)
+    return (
+    string.gsub(str,"(.)",
+    function (c)
+        return string.format("%02X%s",string.byte(c), spacer or "\\")
+    end)
+    )
+end
+
+function docx_handler(t,verbose)
+    rtn = 0
+    tmpname = os.tmpname()
+    
+    tmp = io.open(tmpname,'w')
+    tmp:write(t)
+    tmp:close()
+
+    z,err = zip.open(tmpname)
+    local buffers = {}
+    if z then
+        for w in z:files() do
+            if string.find(w.filename,"word/_rels/webSettings.xml.rels",1,true) then
+                f = z:open(w.filename);
+                u = f:read("*all")
+                --convert to lowercase
+                u = u:lower()
+                f:close()
+                if (verbose==1) then print("Checking " .. w.filename) end
+                    --search for unique content first for performance, all matches lowercase
+                    if string.find(u,".docx",0,true) and string.find(u,"http://",0,true) and string.find(u,"targetmode",0,true) and string.find(u,"frame",0,true) then
+ 
+                        for capture in string.gmatch(u, "(%b)") do 
+                            if string.match(capture,"['\"]http://[^'\"]*%.docx",0) and string.match(u,"targetmode%s*=%s*['\"][^'\"]*external",0) then 
+                                rtn = 1
+                            end
+                        end
+                    if (verbose == 1) then print("Found possible CVE-2016-0056 in DOCX") end
+                    end
+                end
+            end
+    end
+    if err then print(err) end
+    if z then z:close() end
+    os.remove(tmpname)
+    return rtn
+end
+
+function common(t,o,verbose)
+    rtn = 0
+    if string.sub(t,1,4) == "PK\003\004" then
+        rtn = docx_handler(t,verbose)
+    end
+    return rtn 
+end
+
+function match(args)
+    local t = tostring(args["http.response_body"])
+    local o = args["offset"]
+    return common(t,o,0)
+end
+
+function run()
+  local f = io.open(arg[1])
+  local t = f:read("*all")
+  f:close()
+  common(t,4,1)
+end
+                        </code>
+                    </pre>
+                    <pre>
+                        <code>
+alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"ET LUAJIT MS Office Word Doc Use After Free Vulnerability CVE-2016-0056"; flow:established,from_server; file_data; content:"PK|03 04|"; content:"word/_rels/webSettings.xml.rels"; distance:0; nocase; luajit:CVE-2016-0056.lua; reference:cve,2016-0056; classtype:attempted-admin; sid:30300056; rev:1;)
+                        </code>
+                    </pre>
+                    <aside class="notes">
+                        A Suricata rule can offload some difficult processing to a built-in Lua engine. Such engine can receive a reassembled and normalized packet, or flow, or higher layer field, like here - a http response body. It is pretty much up to a Lua JIT what is done, here we actually parse the file structure, first decompressing it, looking for high confidence exploit structure match.
+                        Lua code is not the only mechanism that can be used in such a rule - you can see several techniques mixed together.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>Custom header missing?</h3>
+                    <p>Adding new protocol level fields - <span class="fragment" style="color: #8AB638;">C code changes</span></p>
+                    <p>Something invisible from Lua - <span class="fragment" style="color: #8AB638;">C code changes</span></p>
+                    <p>New input like Myricom/Netmap - <span class="fragment" style="color: #8AB638;">C code changes</span></p>
+                    <span class="fragment" style="color: #CC5600;"><p>Sometimes add on functionality presents challenges</p></span>
+                </section>
+
+                <section>
+                    <pre><code>
+                        module MozillaHTTPHeaders;
+
+export {
+    redef record Intel::Info += {
+        ## True client IP address added by our ZLBs
+        cluster_client_ip: string &log &optional;
+    };
+
+    redef record Intel::Seen += {
+        ## Log value of the X-CLUSTER-CLIENT-IP
+        ## True client IP address added by our ZLBs
+        cluster_client_ip: string &log &optional;
+    };
+
+    redef record HTTP::Info += {
+        ## Log value of the X-CLUSTER-CLIENT-IP
+        ## True client IP address added by our ZLBs
+        cluster_client_ip: string &log &optional;
+        ## Log which backend server handled the connection.
+        ## Might be useful to know where to look for more logs or which server might be under the load
+        backend_server: string &log &optional;
+    };
+
+    redef enum Intel::Where += {
+        HTTP::IN_X_CLUSTER_CLIENT_IP_HEADER,
+        HTTP::IN_X_BACKEND_SERVER_HEADER,
+    };
+    
+    ## A boolean value to determine if you log the value of X-CLUSTER-CLIENT-IP headers
+    const log_cluster_client_ip = T &redef;
+    ## A boolean value to determine if you log the value of X-BACKEND-SERVER headers
+    const log_backend_server = T &redef;
+}
+
+event Intel::match(s: Intel::Seen, items: set[Intel::Item])
+{
+    if ( ( s?$conn ) && ( s$conn?$http ) && ( s$conn$http?$cluster_client_ip ) )
+        s$cluster_client_ip = s$conn$http$cluster_client_ip;
+}
+
+event http_header(c: connection, is_orig: bool, name: string, value: string)
+{
+    if (!c?$http)
+        return;
+
+    if (name == "X-CLUSTER-CLIENT-IP" ) {
+        #if (is_valid_ip(value)) {
+            c$http$cluster_client_ip = value;
+            Intel::seen([$host=to_addr(value),
+                    $indicator_type=Intel::ADDR,
+                    $conn=c,
+                    $where=HTTP::IN_X_CLUSTER_CLIENT_IP_HEADER]);
+        #}
+    }
+    if (name == "X-BACKEND-SERVER") {
+            c$http$backend_server = value;
+            # this has no right to be true. EVER.
+#            Intel::seen([$host=to_addr(value),
+#                $indicator_type=Intel::DOMAIN,
+#                $conn=c,
+#                $where=HTTP::IN_X_BACKEND_SERVER_HEADER]);
+    }
+}
+
+                    </pre></code>
+                </section>
+
+                <section>
+                    <h3>I just could not resist</h3>
+                        <table>
+                                <tr>
+                                    <td> </td><td>Bro</td><td>Suricata</td>
+                                </tr>
+                                <tr>
+                                    <td>Intel Framework</td><td>Extend it - custom fields</td><td>Hardcoded fields</td>
+                                </tr>
+                                <tr>
+                                    <td>Logs</td><td>Rich, easy to extend</td><td>Hardcoded</td>
+                                </tr>
+                                <tr>
+                                    <td>Scripting</td><td>Bro IS scripting</td><td>Lua - hardcoded but powerful</td>
+                                </tr>
+                        </table>
+                        <aside class="notes">
+                            Not to mention attaching several analyzers to a single connection in Bro, decapsulating tunnel connections and sending internal flow through Bro again and so on.
+                        </aside>
+                </section>
+
+                <section>
+                    <h3>On the other hand</h3>
+                        <table>
+                                <tr>
+                                    <td> </td><td>Bro</td><td>Suricata</td>
+                                </tr>
+                                <tr>
+                                    <td>Care and feed</td><td>Lots</td><td>Just runs</td>
+                                </tr>
+                                <tr>
+                                    <td>Performance</td><td>A few Gbit/sec</td><td>10? 20? 40Gbit/sec?<p>20 000 rules</p></td>
+                                </tr>
+                        </table>
+                        <aside class="notes">
+                            Bro is a cluster. With all upsides and downsides of it. I used to have a wrapper over broctl that was starting it, waiting for it to succeed or hang and if so, killing it and trying 5 more times, before giving up. It is not longer the case in 2.5, just FYI.
+                            Going to 10 or more Gbits per second on Bro is difficult using commodity hardware. Leave it to Broala.
+                        <aside>
+                </section>
+
+                <section>
+                    <h3>
+                        What are we hunting for?
+                    </h3>
+                    <p>
+                        With Suricata. And Why.
+                    </p>
+                    <p>
+                        <span class="fragment" style="color: #CC5600;">
+                            Can I do it with Bro?
+                        </span>
+                    </p>
+                    <aside class="notes">
+                        So at some point I started asking myself a question. Do I need both engines? What do I really use them for? If I was to quantify and break down all the impressive capabilities that both engines offer, what do I really need?
+                        Can a single engine do it?
+                        OK, so what do I really need IDS for? Let's take a look at categories with examples and see where it gets us.
+                    </aside>
+                </section>
+                <section>
+                    <p>
+                        CnC - insane detection capabilities, tons of rules
+                    </p>
+                    <code>
+                        2016-07-15T17:57:58+0000    CT7wYb3MaOc2KNL6P   10.252.28.186   60158   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   FHii7k1cPGiCRJdDvk  -   -   -   1.1
+                    </code>
+                    <p>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                        <span class="fragment" style="color:#8AB638" >
+                            Nowhere. It stays here.
+                        </span>
+                    </p>
+                </section>
+
+                <section>
+                    <p>
+                        Interesting User-Agents
+                    </p>
+                    <code>
+                        alert http any any -> any any (msg:"SURICATA NetSession in http_user_agent"; content:"NetSession"; http_user_agent; sid:2500024; rev:1;)
+                    </code>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                        <p>
+                            <span class="fragment" style="color:#8AB638" ><code>
+                                event http_header(c: connection, is_orig: bool, name: string, value: string)
+                            </code></span>
+                        </p>
+                </section>
+
+
+                <section>
+                    <p>
+                        Interesting DNS queries
+                    </p>
+                    <p><pre><code>
+alert udp any any -> any 53 (msg:"SURICATA DNS Query to a Suspicious *.ws Domain"; content:"|01 00 00 01 00 00 00 00 00 00|"; depth:10; offset:2; content:"|02|ws|00|"; nocase; sid:2500003; rev:1;)
+                    </code></pre></p>
+                    <p><pre><code>
+alert http any any -> any any (msg:"SURICATA HTTP Request to a Suspicious *.to Domain"; flow:established,to_server; content:".to"; http_host; isdataat:!1,relative; sid:2500006; rev:1;)
+                    </code></pre></p>
+                    <p><pre><code>
+alert tls $EXTERNAL_NET any -> $HOME_NET any (msg:"ET INFO SUSPICIOUS SSL Cert for DNSDYNAMIC.ORG domain mysq1.net"; flow:established,from_server; content:"|55 04 03|"; byte_jump:1,1,relative; content:".mysq1.net"; fast_pattern; distance:-10; within:10; sid:10120032; rev:1; classtype:misc-activity;)
+                    </p></code></pre>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                        <span class="fragment" style="color:#8AB638" >
+                        <p>
+                            <code>
+                                event http_header(c: connection, is_orig: bool, name: string, value: string)
+                            </code>
+                        </p>
+                        <p>
+                            <code>
+                                event dns_*_reply()
+                            </code></span>
+                        </p>
+                        <p>
+                            <code>
+                                ssl_extension_server_name(c: connection, is_orig: bool, names: string_vec)
+                            </code>
+                        </p>
+                        </span>
+                </section>
+
+                <section>
+                    <h3>
+                        ssl_* functions let us fingerprint and match on parts of SSL handshake
+                    </h3>
+                </section>
+
+                <section>
+                    <p>
+                        Spoofed SSL certificates
+                    </p>
+                    <pre><code>
+alert tls any any -> any any (msg:"SURICATA SSL Gmail certificate not issued by Google"; tls.subject:"C=US, ST=California, L=Mountain View, O=Google Inc, CN=mail.google.com"; tls.issuerdn:!"C=US, O=Google Inc, CN=Google Internet Authority G2"; sid:2500014; rev:1;)
+                    </code></pre>
+                    <pre>
+                        <code>
+alert tls any any -> any any (msg:"SURICATA SSL Google certificate not issued by Google"; tls.subject:"C=US, ST=California, L=Mountain View, O=Google Inc, CN=google.com"; tls.issuerdn:!"C=US, O=Google Inc, CN=Google Internet Authority G2"; sid:2500015; rev:1;)
+                        </code>
+                    </pre>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                            <span class="fragment" style="color:#8AB638" >
+                                <p><code>
+                                    event log_ssl(rec: SSL::Info)
+                                </code></p>
+                                <p>
+                                    Or somewhere else. Ask Johanna ;-)
+                                </p>
+                            </span>
+                </section>
+
+                <section>
+                    <p>
+                        Private and public keys in clear
+                    </p>
+                    <pre><code>
+alert http any any -> any any (msg:"SURICATA FILE plaintext PEM RSA private key"; filemagic:"PEM RSA private key"; sid:2500017; rev:1;)
+                    </code></pre>
+                    <pre>
+                        <code>
+alert http any any -> any any (msg:"SURICATA FILE plaintext OpenSSH RSA1 private key"; filemagic:"OpenSSH RSA1 private key"; sid:2500023; rev:1;)
+                        </code>
+                    </pre>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                        <p>
+                            <span class="fragment" style="color:#8AB638" ><code>
+                            </code>Nowhere. It stays there.</span>
+                        </p>
+                </section>
+
+                <section>
+                    <p>
+                        Known cleartext malicious communication - think DFIR
+                    </p>
+                    <pre><code>
+alert udp any any -> any 53,1024 (msg:"example_message"; flow:to_server; content:"alamakota|3A|somethinghere"; threshold: type limit, track by_src, seconds 1, count 1; sid:2700000; rev:1;)
+                    </code></pre>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                        <p>
+                            <span class="fragment" style="color:#8AB638" ><code>
+                            </code>Nowhere. It stays there.</span>
+                        </p>
+                </section>
+
+                <section>
+                    <p>
+                        Protocol anomalies
+                    </p>
+                    <p><pre><code>
+alert tcp any any -> any 80 (msg:"SURICATA non-HTTP on TCP port 80"; flow:to_server; app-layer-protocol:!http; threshold: type limit, track by_src, seconds 60, count 1; sid:2271002; rev:1;)
+                    </code></pre></p>
+                    <p><pre><code>
+alert tcp any any -> any 53 (msg:"SURICATA non-DNS-TCP on TCP port 53"; flow:to_server; app-layer-protocol:!dns; threshold: type limit, track by_src, seconds 60, count 1; sid:2271016; rev:1;)
+                    </code></pre></p>
+                    <p>
+                        Two kinds of rules
+                    </p>
+                    <p>
+                        <span class="fragment" style="color:#8AB638" >X</span> on <span class="fragment" style="color:#CC5600" >non-X</span> port
+                    </p>
+                    <p>
+                        <span class="fragment" style="color:#CC5600" >not-X</span> on <span class="fragment" style="color:#8AB638" >X-port</span>
+                    </p>
+                        <span class="fragment" style="color: #CC5600;">
+                            Where can we send this function?
+                        </span>
+                        <p>
+                            <span class="fragment" style="color:#8AB638" ><code>
+                            </code>DPD, maybe?</span>
+                        </p>
+                    </section>
+
+                    <section>
+                    <pre>
+                        <code>
+event protocol_confirmation(c: connection, atype: Analyzer::Tag, aid: count)
+                        </code>
+                    </pre>
+                    <pre>
+                        <code>
+event protocol_violation(c: connection, atype: Analyzer::Tag, aid: count)
+                        </code>
+                    </pre>
+                </section>
+
+                <section>
+                    <h3>Is this a false positive?</h3>
+                        <img src="statics/pckeeper.png" width="100%" />
+                    <aside class="notes">
+                        On a beautiful sunny day I was presented with a question like this. You don't see much on this slide, I have a better version right at the next slide.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>
+                        Is this a false positive?
+                    </h3>
+                    <pre>
+                        <code>
+ET INFO Executable Retrieved With Minimal HTTP Headers - Potential Second Stage Download",
+ET POLICY PE EXE or DLL Windows file download
+ET POLICY PE EXE or DLL Windows file download
+ET POLICY PE EXE or DLL Windows file download
+ET POLICY PE EXE or DLL Windows file download
+ET POLICY PE EXE or DLL Windows file download
+ET POLICY PE EXE or DLL Windows file download
+ETPRO MALWARE Win32/PCKeeper PUP Activity
+ETPRO MALWARE Win32/PCKeeper PUP Activity
+ET POLICY PE EXE or DLL Windows file download
+ET MALWARE Possible FakeAV Binary Download
+ET TROJAN AntiVirus exe Download Likely FakeAV Install
+ET INFO EXE IsDebuggerPresent (Used in Malware Anti-Debugging)
+ET INFO EXE - Served Attached HTTP
+ET MALWARE Win32/InstallCore Initial Install Activity 1
+ET MALWARE Win32/InstallCore Initial Install Activity 1
+ETPRO MALWARE Win32/InstallCore Initial Install Activity 2
+ET POLICY PE EXE or DLL Windows file download
+ET INFO EXE - Served Attached HTTP
+                        </code>
+                    </pre>
+                    <p>
+                        <span class="fragment" style="color:#8AB638" >
+                            Likely a true positive. Likely is not enough.
+                        </span>
+                    </p>
+                    <p>
+                        <span class="fragment" style="color:#CC5600" >
+                            Trust matters.
+                        </span>
+                    </p>
+                    <aside class="notes">
+                        The important thing to know is that a single rule triggered is almost always a false positive. A few rules of different kind triggered together, within a short time, is most likely a true positive.
+                        Commercial solutions would keep a buffer with full session in memory, that I could load into wireshark.
+                        Those of you who are allowed to do a full packet capture in offices, would also be able to do that. I cannot, I can only write pcaps in datacenters. And I do.
+                        Bro logs to the rescue. As always.
+                    </aside>
+                </section>
+
+                <section>
+                    <h3>
+                        What if you don't know?
+                    </h3>
+                    <img src="statics/a11.jpg" width="50%" />
+                    <p>False or True positive?</p>
+                    <p>Who that is? IP -> MAC -> User</p>
+                </section>
+
+                <section>
+                    <h4>
+                        conn.log - dns.log - http.log - ssl.log - x509.log - radius.log - dhcp.log
+                    </h4>
+                    <pre>
+                        <code>
+2016-07-15T17:39:54+0000    C4uKjW65TBDf4szi5   10.252.28.186   58430   54.210.191.0    80  1   GET download.pckeeper.com   /download.php?affid=mzb_260.12068868.1468604394.20.mzb&utm_source=irs&utm_medium=ppi&utm_campaign=pck_irs_ppi_t17_AV_ff&utm_term=&utm_content=&userDefiner=mzb_2410&trt=32_1049070001&tid_ext=217;YD0E0ETD0CYDTDYCTDYE0E0BYDTC0EYC2RTBTDTCYCTDYBTCYDTCTDTAZYTBZYYEYCTD  -   PCKInstaller 1.1.957.8  0   1427040 200 OK  -   -   -   (empty) -   FgXZ4O2CHKa6CAGatc  application/x-dosexec   -   -   1.1
+2016-07-15T17:39:56+0000    Cg4wDIyAY57iEt8h8   10.252.28.186   58439   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=InstallInit|VER_1.1.1049_VER&prodID=32&affid=153.6970914.1409408191.6.mzb&trt=17&bundleId=AV:1.1.1049.0.0:17    -   PCKInstaller 1.1.957.8  0   28  200 OK  -   -   -   (empty) -   -   -   -   -   FCskr83Cwd3wpAFu6j  text/plain  -   -   1.1
+2016-07-15T17:39:56+0000    Cg4wDIyAY57iEt8h8   10.252.28.186   58439   23.22.68.216    80  2   GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=InstallInit|VER_1.1.957_VER&prodID=PCKInstaller&affid=153.6970914.1409408191.6.mzb&trt=0&bundleId=AV:1.1.1049.0.0:17 -   PCKInstaller 1.1.957.8  0   28  200 OK  -   -   (empty) -   -   -   -   -   FaMSf6ahxBWySNDXf   text/plain  -   -   1.1
+2016-07-15T17:39:59+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=OtherAVInstalled1|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FI7bdx1VxnUejyurTb  text/plain  -   -   1.1
+2016-07-15T17:39:59+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  2   GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=OtherAVInstalled1|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FXo3CcaYpz1hyJeej   text/plain  -   -   1.1
+2016-07-15T17:39:59+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  3   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AV_Installed_KASPERSKY ENDPOINT SECURITY 10 FOR WINDOWS|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FldiS4pwOY3ePxg92   text/plain  1.1
+2016-07-15T17:40:00+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  4   GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=AV_Installed_KASPERSKY ENDPOINT SECURITY 10 FOR WINDOWS|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  30  200 OK  -   -   -   (empty) -   -   -   -   -   F7yYAvZEmMePgH0Mj   text/plain  -   -   1.1
+2016-07-15T17:40:00+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  5   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=OtherAntiSpywareInstalled1|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FPTDkM2GsM4qn6f2g1  text/plain  -   -   1.1
+2016-07-15T17:40:00+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  6   GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=OtherAntiSpywareInstalled1|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   FngExSN5alF4k3Dsd   text/plain  -   -   1.1
+2016-07-15T17:40:00+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  7   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AntiSpyware_Installed_KASPERSKY ENDPOINT SECURITY 10 FOR WINDOWS|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FKvwiqfAaIiVGkTyh   text/plain  -   -   1.1
+2016-07-15T17:39:59+0000    CJkoAg4fmQ2KRPGT9c  10.252.28.186   58462   205.251.215.170 80  1   GET cdn.pckeeper.com    /pckeeper/dist/vcredist_x64.exe -   PCKInstaller 1.1.957.8  0   5225304 200 OK  -   -   (empty) -   -   -   -   -   Ftgz2rUe8inyglBUk   application/x-dosexec   -   -   1.1
+2016-07-15T17:40:00+0000    CJkoAg4fmQ2KRPGT9c  10.252.28.186   58462   205.251.215.170 80  2   GET cdn.pckeeper.com    /pckeeper/accsvc/builds/1.1.69.0/AccountSvc64.msi?affid=260.12068868.1468604394.20.mzb  -   PCKInstaller 1.1.957.8  0   737280  200 OK  -   -   -   (empty) -   -   -   -   -   F4nsWj2r1Un9NtpMnd  application/msword  -   -   1.1
+2016-07-15T17:40:00+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  8   GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=AntiSpyware_Installed_KASPERSKY ENDPOINT SECURITY 10 FOR WINDOWS|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FUpppYzJpAMf4aUC5   text/plain  -   -   1.1
+2016-07-15T17:40:01+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  9   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=DotNet45Installed|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FMWl7YiaIxpxjhGLb   text/plain  -   -   1.1
+2016-07-15T17:40:01+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  10  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=DotNet45Installed|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FnaR7g2UOtSuPOFEk8  text/plain  -   -   1.1
+2016-07-15T17:40:01+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  11  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=DropboxIsNotInstalled|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   F0o2bC287PT8V3o6K9  text/plain  -   -   1.1
+2016-07-15T17:40:01+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  12  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=DropboxIsNotInstalled|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FN8OPj3r8AXKUXF1gi  text/plain  -   -   1.1
+2016-07-15T17:40:02+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  13  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=InstallRun|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty)FgDyny1gzAtc1mwlXd   text/plain  -   -   1.1
+2016-07-15T17:40:02+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  14  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=InstallRun|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FPRNTU34a1LsbU2KM8  text/plain  -   -   1.1
+2016-07-15T17:40:02+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  15  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=InstallSilent|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty)Fenwr83FApLNPf05lg   text/plain  -   -   1.1
+2016-07-15T17:40:02+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  16  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=InstallSilent|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FsHlVJ1c9aEYagkd37  text/plain  -   -   1.1
+2016-07-15T17:40:01+0000    CJkoAg4fmQ2KRPGT9c  10.252.28.186   58462   205.251.215.170 80  3   GET cdn.pckeeper.com    /pckeeper/security/builds/1.1.1049.0/PCKAV64.msi?affid=260.12068868.1468604394.20.mzb   -   PCKInstaller 1.1.957.8  0   8105984 200 OK  -   -   -   (empty) -   -   -   -   -   F0lRiXfDJ2aNH0WN4   application/msword  -   -   1.1
+2016-07-15T17:40:03+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  17  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=InstallStart|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty)FUtJOf3n0nwUJM5zfc   text/plain  -   -   1.1
+2016-07-15T17:40:03+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  18  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=InstallStart|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FsPZWS33FBGeHOGXkh  text/plain  -   -   1.1
+2016-07-15T17:40:03+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  19  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Download_Started_VS2008|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   Fg9sxe4TteSrgGz8xe  text/plain  -   -   1.1
+2016-07-15T17:40:03+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  20  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Download_Started_VS2008|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   F915XF2OUYCeKMBhFi  text/plain  -   -   1.1
+2016-07-15T17:40:03+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  21  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Download_Finished_VS2008|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FH63DP3uoA01w0WmJf  text/plain  -   -   1.1
+2016-07-15T17:40:03+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  22  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Download_Finished_VS2008|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   Fyje5x1Bx4QPBKer59  text/plain  -   -   1.1
+2016-07-15T17:40:04+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  23  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Download_Started_AccSvc|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FR3FCV38jrdQnBBRxl  text/plain  -   -   1.1
+2016-07-15T17:40:04+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  24  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Download_Started_AccSvc|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   FKgnxG2KIGWAUrbaRk  text/plain  -   -   1.1
+2016-07-15T17:40:04+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  25  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Install_Started_VS2008|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FOkg8C3xf00Xp9pi91  text/plain  -   -   1.1
+2016-07-15T17:40:04+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  26  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Install_Started_VS2008|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FOiuEV3tfzpSSCn2W7  text/plain  -   -   1.1
+2016-07-15T17:40:04+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  27  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Download_Finished_AccSvc|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   F0k13v4bfOkxhAi3z2  text/plain  -   -   1.1
+2016-07-15T17:40:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  28  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Download_Finished_AccSvc|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   F6mv0o1LodqvQx2rP2  text/plain  -   -   1.1
+2016-07-15T17:40:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  29  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Download_Started_PCKAV|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FjPg0XHVBvoArxJo6   text/plain  -   -   1.1
+2016-07-15T17:40:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  30  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Download_Started_PCKAV|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FpovEo1VIqoGsG5foh  text/plain  -   -   1.1
+2016-07-15T17:40:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  31  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Download_Finished_PCKAV|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FdseGbZifCB7t1MMg   text/plain  -   -   1.1
+2016-07-15T17:40:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  32  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Download_Finished_PCKAV|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   FJeXix1wvzVt457qdl  text/plain  -   -   1.1
+2016-07-15T17:40:26+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  33  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Install_Finished_VS2008|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FNUpy4NPIINZc59Vi   text/plain  -   -   1.1
+2016-07-15T17:40:26+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  34  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Install_Finished_VS2008|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   FMSyAS2BQ6O5xvnaIe  text/plain  -   -   1.1
+2016-07-15T17:40:26+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  35  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Install_Started_AccSvc|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   F2eSpe10j9NSGHL8g4  text/plain  -   -   1.1
+2016-07-15T17:40:26+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  36  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Install_Started_AccSvc|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   Fz4qMv3gc1JKKoNBgc  text/plain  -   -   1.1
+2016-07-15T17:40:35+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  37  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Install_Finished_AccSvc|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001   -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FgkpdL1G9Ye6zFguel  text/plain  -   -   1.1
+2016-07-15T17:40:35+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  38  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Install_Finished_AccSvc|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  (empty) -   -   -   -   -   FWvLi92BPR3zLmjXx7  text/plain  -   -   1.1
+2016-07-15T17:40:36+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  39  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Install_Started_PCKAV|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FmdXO72UsnCmcVB89b  text/plain  -   -   1.1
+2016-07-15T17:40:36+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  40  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Install_Started_PCKAV|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FLUw2y2oYujMMzNZgf  text/plain  -   -   1.1
+2016-07-15T17:41:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  41  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=Install_Finished_PCKAV|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001    -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FUobO01fSxF1Dso533  text/plain  -   -   1.1
+2016-07-15T17:41:05+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  42  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=Install_Finished_PCKAV|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   (empty) -   -   -   -   -   FPrDvD1aJskC8TPvn6  text/plain  -   -   1.1
+2016-07-15T17:41:06+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  43  GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=InstallFinish|VER_1.1.1049_VER&prodID=32&affid=260.12068868.1468604394.20.mzb&trt=17&bundleId=32_1049070001 -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   -   (empty)FGTGI3E8bWqe24069    text/plain  -   -   1.1
+2016-07-15T17:41:06+0000    CM2Vh1chCZvJXiaM8   10.252.28.186   58460   23.22.68.216    80  44  GET event.pckeeper.com  /event.php?step=PCKInstallerEventStat&mess=InstallFinish|VER_1.1.957_VER&prodID=PCKInstaller&affid=260.12068868.1468604394.20.mzb&trt=0&bundleId=32_1049070001  -   PCKInstaller 1.1.957.8  0   30  200 OK  -   -   (empty) -   -   -   -   -   FPBZCB1GaUndfcd67h  text/plain  -   -   1.1
+2016-07-15T17:41:07+0000    C3DP3z3I7za9d5nIi9  10.252.28.186   58888   52.205.153.76   80  1   GET av.pckeeper.com /ocf/av/check-offline-base?in7z=1   -   -   0   157 200 OK  -   -   -   (empty)Fp5oiD1ndRBsEkgjE4   text/json   -   -   1.1
+2016-07-15T17:41:21+0000    CZ9H5a4edILneDOzb4  10.252.28.186   59016   52.21.43.13 80  1   GET stats.pckeeper.com  /soft-data-stats?ltrt=0&security=1.1.1049.0&strt=17&accsvc=1.1.69.0&installer=1.1.957.8&affid=260.12068868.1468604394.20.mzb&compid=1ed49752-f0cd-4d3e-b198-c7fa76160527:S20GNYAG405071:&product_id=32&active=0 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   0   200 OK  -   -   -   (empty) -   -   -   -   -   -   1.1
+2016-07-15T17:41:21+0000    CINDIb2yzVhOoqwsT   10.252.28.186   59020   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=FirstRun|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   (empty) -   -   -   -   -   F0dxod325Kz5hBgqt6  text/plain  -   -   1.1
+2016-07-15T17:41:21+0000    CQilh22OiFTGsOatcg  10.252.28.186   59019   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=FirstRun&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   Fg8pXF4QeCEwGUax2g  text/plain  -   -   1.1
+2016-07-15T17:41:22+0000    CQilh22OiFTGsOatcg  10.252.28.186   59019   23.22.68.216    80  2   GET event.pckeeper.com  /event.php?step=stats&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001&mess={\x0d\x0a  "osVersion": "6.2.9200.0",\x0d\x0a  "softVersion": "1.1.1049.0"\x0d\x0a} -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  30  200 OK  -   -   -   (empty) -   -   -   -   -   FbY9n53iDcPddJ8oyi  text/plain  -   -   1.1
+2016-07-15T17:41:22+0000    CINDIb2yzVhOoqwsT   10.252.28.186   59020   23.22.68.216    80  2   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanInitializing|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  (empty) -   -   -   -   -   Fpjl803sX9WZVPfZw4  text/plain  -   -   1.1
+2016-07-15T17:41:22+0000    CQilh22OiFTGsOatcg  10.252.28.186   59019   23.22.68.216    80  3   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanInitialized|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   FBfdk64kLGabyxg41f  text/plain  -   -   1.1
+2016-07-15T17:41:22+0000    CQilh22OiFTGsOatcg  10.252.28.186   59019   23.22.68.216    80  4   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanProcessStarted|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  (empty) -   -   -   -   -   Fmeewd2hl1ZQR2aJsa  text/plain  -   -   1.1
+2016-07-15T17:41:22+0000    CINDIb2yzVhOoqwsT   10.252.28.186   59020   23.22.68.216    80  3   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanThreadWaitOne|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  (empty) -   -   -   -   -   Fukxwy1lPS9mKM013j  text/plain  -   -   1.1
+2016-07-15T17:41:07+0000    CHLb1U3zfXLWqWCTmb  10.252.28.186   58890   158.69.117.54   80  1   GET cdn-av.pckeeper.com /ocf/av/download-offline-base/files/ob_all.zip  -   -   0   46695810    200 OK  -   (empty) -   -   -   -   -   F3Htw92rlwF0XqWbN5  application/zip -   -   1.1
+2016-07-15T17:41:40+0000    CrJYh63tzXjf8IkSxa  10.252.28.186   59023   205.251.215.170 80  1   GET cdn.pckeeper.com    /pckeeper/security/key/Essentware/HBEDV.ver -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   10  200 OK  -   -   -   (empty) -   -   -   -   -   FfMYfx2q8e2PdudqV   text/plain  1.1
+2016-07-15T17:41:40+0000    CrJYh63tzXjf8IkSxa  10.252.28.186   59023   205.251.215.170 80  2   GET cdn.pckeeper.com    /pckeeper/security/key/Essentware/HBEDV.key -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   512 200 OK  -   -   -   (empty) -   -   -   -   -   FMT2uE4GFBvBp4oida  text/plain  1.1
+2016-07-15T17:46:33+0000    CXRkZsFWLt1gvysg2   10.252.28.186   59391   52.3.131.11 80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AntivirusEngineInitializationTime_0_1_Min|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FAT6G6IJvXz27g001   text/plain  1.1
+2016-07-15T17:46:34+0000    Cz1NgX1WKeuIQ0frT2  10.252.28.186   59393   52.3.131.11 80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=RTPON|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FDmJrG10L8EAD7tmyj  text/plain  -   -   1.1
+2016-07-15T17:56:34+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanOnScanTimerEllapsed|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  (empty) -   -   -   -   -   FRQO1w40d2b2aEnkQj  text/plain  -   -   1.1
+2016-07-15T17:56:34+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  2   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanAfter_UpdateStateAction|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FHocLM16GltfS7kGmb  text/plain  -   1.1
+2016-07-15T17:56:34+0000    CjDYo1BDU2DjlnZ5f   10.252.28.186   60000   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanBefore_UpdateStateAction|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   F39qAIMvQJMoS0xib   text/plain  -   1.1
+2016-07-15T17:56:34+0000    CjDYo1BDU2DjlnZ5f   10.252.28.186   60000   23.22.68.216    80  2   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScan_BeforeChecks|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  (empty) -   -   -   -   -   Fr74Nj4KI2IcBL5xp8  text/plain  -   -   1.1
+2016-07-15T17:56:34+0000    CjDYo1BDU2DjlnZ5f   10.252.28.186   60000   23.22.68.216    80  3   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScanStart|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   FZLzuz3u17tklttXf   text/plain  -   -   1.1
+2016-07-15T17:56:34+0000    CqhMvY1o9McEj3Juj1  10.252.28.186   60002   23.22.68.216    80  1   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=StartScanQueryOnService_SilentScan|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   Fn1i0A1flBR71raMl5  text/plain  -   1.1
+2016-07-15T17:56:34+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  3   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=SilentScan_AfterChecks|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  (empty) -   -   -   -   -   Fnk8dOepAASDrK65g   text/plain  -   -   1.1
+2016-07-15T17:56:34+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  4   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=StartScanLastEntryOnClient_SilentScan|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   FBzM1t4Y0gvJO5OcN1  text/plain  -   1.1
+2016-07-15T17:57:27+0000    CkmvrU2B160GvENCHi  10.252.28.186   60056   70.38.27.158    80  1   GET crm.pckeeper.com    /chat/crm/action=history&room=121614479807357892406d807c8z3975  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  200 OK  -   -   -   (empty) -   -   -   -   -   FFwrGq1BJsxG0fdhgh  -   -   1.1
+2016-07-15T17:57:27+0000    CmeOPe15mVAAkkqn93  10.252.28.186   60064   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   FHjgW3PjfJUARgHOa   -   -   -   1.1
+2016-07-15T17:57:26+0000    CuPhV13XOuj6DAIdAg  10.252.28.186   60054   70.38.27.158    80  1   GET support.pckeeper.com    /chat/crm/action=connect?name=&email=&sid=1ed49752-f0cd-4d3e-b198-c7fa76160527:S20GNYAG405071:&issue=FindAndFix&source=PcKeeper&product=FindAndFixAV&affid=260.12068868.1468604394.20.mzb&lang=en&version=1.1.1049  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   401 200 OK  -   -   -   (empty) -   -   -   -   -   Fgnk4dNzAXuwkkjZ8   text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CjDYo1BDU2DjlnZ5f   10.252.28.186   60000   23.22.68.216    80  4   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=LivechatConnectingToPersonalExpert|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   -   -   (empty) -   -   -   -   -   Fxy5EY3pfqyd7U2vFi  text/plain  -   1.1
+2016-07-15T17:57:27+0000    COAgNHcVZBj1zv00c   10.252.28.186   60066   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   504 200 OK  -   -   -   (empty) -   -   -   -   -   FdumRn2vc4Vy0lZjdf  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  5   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AVAlertRTPShow|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   FSzYtR2xZ2ar9MpS88  text/plain  -   -   1.1
+2016-07-15T17:57:28+0000    C9WPnb1YrM8QyQDw05  10.252.28.186   60076   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   427 200 OK  -   -   -   (empty) -   -   -   -   -   FSZboJuzEoXqQjIo8   text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CcjB5X3TjhCDgNJdpa  10.252.28.186   60078   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_AV_installed { Kaspersky Endpoint Security 10 for Windows, Windows Defender, PCKeeper Antivirus } -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  269 200 OK  -   -   -   (empty) -   -   -   -   -   FoYz0l4CuV3uPIKmZ5  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CocNDd1BQ3Ym6LFGQ   10.252.28.186   60082   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_fullscan_running  PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   188 200 OK  -   -   -   (empty) -   -   -   FJ3U4l2Wlz4wiMRRUh  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    C988qp0pg42hv6Z5f   10.252.28.186   60070   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_chat_started {"automessage_data": ["0 Threat"]}   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   223 200 OK  -   -   (empty) -   -   -   -   -   F2EoH54ELQPOU8fnvh  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CKgjys2Tp0rqpcdhth  10.252.28.186   60080   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   269 200 OK  -   -   -   (empty) -   -   -   -   -   Ffdgq612FI0KgUhXg7  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CB3Fnn4OzP9g7L7clk  10.252.28.186   60084   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   188 200 OK  -   -   -   (empty) -   -   -   -   -   FT4I1p1tNW3geGlrC6  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    Cx71jd4mylFBvKJz64  10.252.28.186   60068   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=computerID:1ed49752-f0cd-4d3e-b198-c7fa76160527:S20GNYAG405071: trial:1 trt:17 OS:Microsoft Windows NT 6.2.9200.0 computer name:CSAN-29192 product version:1.1.1049 expiration:08/14/2016 10:41:07 activation:0 comptype:laptop country:United States cpu:Intel(R) Core(TM) i7-5600U CPU @ 2.60GHz ram:7.88GB vga:Intel(R) HD Graphics 5500[1024MB]  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   504 200 OK  -   -   -   (empty) -   -   -   -   -   F1eUOn2SrlxePfJMG9  text/json   1.1
+2016-07-15T17:57:28+0000    C62Zk93rS3Br9YzZdh  10.252.28.186   60072   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   223 200 OK  -   -   -   (empty) -   -   -   -   -   FyLYz54vNPvHYOWDze  text/json   -   -   1.1
+2016-07-15T17:57:28+0000    CYpjUh1STjsh6ZE6qb  10.252.28.186   60074   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_buynow_link http://pckeeper.com/buy-now-av?app=true&affid=260.12068868.1468604394.20.mzb&bns=chat&compid=1ed49752-f0cd-4d3e-b198-c7fa76160527:S20GNYAG405071:&version=1.1.1049.0&bundleId=32_1049070001&x-crmproduct=FindAndFixAV -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  427 200 OK  -   -   -   (empty) -   -   -   -   -   FuMVyKuTuYLbDRdzb   text/json   -   -   1.1
+2016-07-15T17:57:29+0000    C7qz5v3B82Z2IYjIYg  10.252.28.186   60088   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//scan_results_not_available -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   193 200 OK  -   -   -   (empty) -   FHoqaa4ZEHjXRUzPQe  text/json   -   -   1.1
+2016-07-15T17:57:29+0000    CdURbMTU4Icca8Rnb   10.252.28.186   60090   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_laptop    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   178 200 OK  -   -   -   (empty) -   -   -   FHp2m13roRhoK4RzH1  text/json   -   -   1.1
+2016-07-15T17:57:29+0000    CT4WcQ1seSR04Y0Wjh  10.252.28.186   60092   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   178 200 OK  -   -   -   (empty) -   -   -   -   -   FTMiW03wSPQplxsWm7  text/json   -   -   1.1
+2016-07-15T17:57:29+0000    ChiH7R3oXN5PqeD9nf  10.252.28.186   60086   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   193 200 OK  -   -   -   (empty) -   -   -   -   -   FM20l84KdE2o4orr9j  text/json   -   -   1.1
+2016-07-15T17:57:29+0000    CSUmZ53qohp8deTQdh  10.252.28.186   60096   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   206 200 OK  -   -   -   (empty) -   -   -   -   -   FdyQ6k1xTMeNUClSJc  text/json   -   -   1.1
+2016-07-15T17:57:29+0000    CrobVX3LvAVlXgEIaa  10.252.28.186   60094   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_default_browser { Firefox 47.0.1 }    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   206 200 OK  -   -   -   (empty) -   -   -   -   -   FKmiry3qj58XBOW6l1  text/json   -   -   1.1
+2016-07-15T17:57:29+0000    CmMIbh2pgvGFGfZyz   10.252.28.186   60100   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   187 200 OK  -   -   -   (empty) -   -   -   -   -   Fmx6RspHCO2Thpnwl   text/json   -   -   1.1
+2016-07-15T17:57:29+0000    CPljyf2cUDjTd8Smz2  10.252.28.186   60098   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_rtp_alert_shown   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   187 200 OK  -   -   -   (empty) -   -   -   FU9kEVmlbSL9FNxse   text/json   -   -   1.1
+2016-07-15T17:57:32+0000    CBroqb2y37xba17e6c  10.252.28.186   60104   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   Fz5iVE4xmTB7EGsmtf  -   -   -   1.1
+2016-07-15T17:57:38+0000    CYjwNe2PxPtAgzgize  10.252.28.186   60108   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   FywxFrVs7CteskRO5   -   -   -   1.1
+2016-07-15T17:57:43+0000    CuiHMcS7ZdCRU3dxl   10.252.28.186   60110   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   Fcvxv7s8MqIlTOyHh   -   -   -   1.1
+2016-07-15T17:57:48+0000    CuMHY23dhKv7y9On33  10.252.28.186   60136   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   FWcE0E3CsUoV5q8S3j  -   -   -   1.1
+2016-07-15T17:57:53+0000    CPn3AG1exxkIvJdNR4  10.252.28.186   60138   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   FaJV1GIhY41Oi3O84   -   -   -   1.1
+2016-07-15T17:57:55+0000    C7WoffNwVKQZ2vJn6   10.252.28.186   60140   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_app_state { "active": true }  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   202 200 OK  -   -   -   (empty)FsOFI23z7cUwBmqPog   text/json   -   -   1.1
+2016-07-15T17:57:29+0000    Cva2gB2LqUhefLYU18  10.252.28.186   60102   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   202 200 OK  -   -   -   (empty) -   -   -   -   -   FdNsjg2YenYRbxyUsk  text/json   -   -   1.1
+2016-07-15T17:57:56+0000    CjDYo1BDU2DjlnZ5f   10.252.28.186   60000   23.22.68.216    80  5   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AVAlertRTPDeleteClick|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001 -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   FoKhIY2MuvUWnDiOAd  text/plain  -   -   1.1
+2016-07-15T17:57:56+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  6   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AVPopupRTPShow|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   FLKCCX2tshbd4gMzsb  text/plain  -   -   1.1
+2016-07-15T17:57:56+0000    CNDhaP3JHXpJ6iJf2d  10.252.28.186   60144   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_threats_detected_popup_shown_1 {"automessage_data":["83 Threats"]}    -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   242 200 OK  -   -   -   (empty) -   -   -   -   -   F7drxoUePYjPJz7U8   text/json   -   1.1
+2016-07-15T17:57:55+0000    CCDj5pz6Xdrh08wS7   10.252.28.186   60142   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   242 200 OK  -   -   -   (empty) -   -   -   -   -   F9TSv1nVenYeoJWJ1   text/json   -   -   1.1
+2016-07-15T17:57:56+0000    Ciwyj025DCZsJWGkQ   10.252.28.186   60146   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_rtp_alert_clickedPCKAV (1.1.1049.0) 6.2.9200.0  x64   0   189 200 OK  -   -   -   (empty) -   -   -   FEiZlk1SbC6IeYuQMh  text/json   -   -   1.1
+2016-07-15T17:57:56+0000    C24qXzN0auKVcTQP5   10.252.28.186   60148   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   189 200 OK  -   -   -   (empty) -   -   -   -   -   FRezH55y2Cn6nAZz5   text/json   -   -   1.1
+2016-07-15T17:57:58+0000    CT7wYb3MaOc2KNL6P   10.252.28.186   60158   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   FHii7k1cPGiCRJdDvk  -   -   -   1.1
+2016-07-15T17:58:00+0000    CqvYV64bF55bgEhil4  10.252.28.186   59999   23.22.68.216    80  7   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=AVPopupRTPClose|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   F7gg7A1ews2DR1Rjc8  text/plain  -   -   1.1
+2016-07-15T17:58:00+0000    CjDYo1BDU2DjlnZ5f   10.252.28.186   60000   23.22.68.216    80  6   GET event.pckeeper.com  /event.php?step=PCKAVEventStat&mess=ActivationPopUpClose|VER_1.1.1049_VER&affid=260.12068868.1468604394.20.mzb&prodID=32&trt=17&bundleId=32_1049070001  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   30  200 OK  -   (empty) -   -   -   -   -   FVbnD91aKvHIwytpDl  text/plain  -   -   1.1
+2016-07-15T17:58:00+0000    CDSWqj3irHJMqsirWl  10.252.28.186   60160   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_threats_detected_popup_closed_1   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   203 200 OK  -   -   -   (empty)FhnONr2Tq08s4itpY5   text/json   -   -   1.1
+2016-07-15T17:57:56+0000    CNRW3M3mmUSTp5ttkb  10.252.28.186   60150   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   203 200 OK  -   -   -   (empty) -   -   -   -   -   FbKEqD1eDSQIVRTtL2  text/json   -   -   1.1
+2016-07-15T17:58:02+0000    Ce3OVIQnDRkMPw71b   10.252.28.186   60166   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_app_state { "active": false } -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   203 200 OK  -   -   -   (empty)FdjKJs4gDGDxyxyDC3   text/json   -   -   1.1
+2016-07-15T17:58:02+0000    CbZueS3A3KImOl0nJf  10.252.28.186   60168   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   203 200 OK  -   -   -   (empty) -   -   -   -   -   FPZ1KS7csskE1wtW9   text/json   -   -   1.1
+2016-07-15T17:58:00+0000    C8Wysj2kLK8lu5L8G9  10.252.28.186   60162   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   189 200 OK  -   -   -   (empty) -   -   -   -   -   F8Szr6IFuMkaoqpJe   text/json   -   -   1.1
+2016-07-15T17:58:02+0000    CAFuKA4WMiWHJGskT8  10.252.28.186   60164   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /post/57892406d55eb230124480/121614479807357892406d807c8z3975/?mestype=comment&message=//ffav_minimized_to_trayPCKAV (1.1.1049.0) 6.2.9200.0  x64   0   189 200 OK  -   -   -   (empty) -   -   -   Fc3uWHjCFs3gW4OW8   text/json   -   -   1.1
+2016-07-15T17:58:04+0000    CqNQI74CNWUcsZhZfe  10.252.28.186   60176   70.38.27.158    80  1   GET support.pckeeper.com    /ping.html  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   6   200 OK  -   -   (empty) -   -   -   -   -   Fr7K9y4EqqRQMS0Wf7  -   -   -   1.1
+2016-07-15T17:58:07+0000    CCwDEzVI9xQv5lId7   10.252.28.186   60180   52.20.201.154   80  1   POST    av.pckeeper.com /ocf/index/scansubmit-vt?affid=260.12068868.1468604394.20.mzb   -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  5009    200 OK  -   -   -   (empty) -   -   -   Fh5vPVpFLcILoB1K9   application/x-gzip  F1ftnSFEAkmF15Z83   -   -   -   1.1
+2016-07-15T17:58:02+0000    Cis17s2TFil6cTymlj  10.252.28.186   60170   54.164.215.45   80  1   GET chat-crm.pckeeper.com   /listen/121614479807357892406d807c8z3975/?client-id=57892406d55eb230124480  -   PCKAV (1.1.1049.0) 6.2.9200.0  x64  0   170 200 OK  -   -   -   (empty) -   -   -   -   -   FNxUZW3ZCDm5pmIrBd  text/json   -   -   1.1
+                        </code>
+                    </pre>
+                    <span class="fragment" style="color: #CC5600;">
+                        Infection confirmed
+                    </span>
+                    <span class="fragment" style="color: #8AB638;">
+                        End User Services unleashed
+                </section>
+
+                <section>
+                    <h3>
+                        The power of context
+                    </h3>
+                    <span style="color: #8AB638;">
+                        XCodeGhost
+                    </span>
+                    <span>
+                         detected.
+                    </span>
+                    <span class="fragment" style="color: #8AB638;">
+                        Multiple
+                    </span>
+                    <span>
+                         rules triggered.
+                    </span>
+                    <span class="fragment">
+                        IP from a guest network. Anonymous to me.
+                    </span>
+                    <span class="fragment">
+                        Isolated office. What if Mozillian?
+                    </span>
+                </section>
+
+                <section>
+                        <table>
+                            <tr>
+                                <td>
+                                    ETPRO TROJAN XCodeGhost Beacon
+                                </td>
+                                <td>
+                                    2
+                                </td>
+                                <td>
+                                    ET TROJAN XcodeGhost CnC M2
+                                </td>
+                                <td>
+                                    2
+                                </td>
+                                <td>
+                                    ET TROJAN XcodeGhost CnC Checkin
+                                </td>
+                                <td>
+                                   2
+                                </td>
+                                <td>
+                                    ET TROJAN XCodeGhost DNS Lookup
+                                </td>
+                                <td>
+                                    2
+                                </td>
+                            </tr>
+                        </table>
+
+                    <pre>
+                        <code>
+bro@nsm1-mtv2:/nsm/bro/logs$ zcat 2016-08-22/dns.* | bro-cut id.orig_h query answers | egrep '10.252.35.219' | sort | uniq -c | sort -n
+(...)
+1 10.252.35.219   init.icloud-analysis.com    5.79.71.205,5.79.71.225,85.17.31.82,85.17.31.122,178.162.203.202,178.162.203.211,178.162.203.226,178.162.217.107
+2 10.252.35.219   g1.163.com  123.58.176.66,123.58.176.65,123.58.179.210,123.58.179.240
+2 10.252.35.219   music.163.com   103.251.128.85,103.251.128.86
+                        </code>
+                    </pre>
+                    <pre>
+                        <code>
+10.252.35.219   POST    init.icloud-analysis.com    /   -   %E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90/2.8.2 CFNetwork/758.5.3 Darwin/15.6.0 -   -   -   
+10.252.35.219   POST    init.icloud-analysis.com    /   -   %E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90/2.8.2 CFNetwork/758.5.3 Darwin/15.6.0 -   -   -   
+                        </code>
+                    </pre>
+                </section>
+
+                <section>
+                    <h4>
+                        Who are you?
+                    </h4>
+                        <p><span style="color: #CC5600;">HTTP</span> logs - <span style="color: #8AB638;">User Agent</span> <code>iPhone; iPhone OS 9.3.4; zh-Hans_US</code></p>
+                        <p><span style="color: #CC5600;">HTTP</span> / SSL / DNS logs - multiple <span style="color: #8AB638;">Mandarin</span> apps</p>
+                        <p><span style="color: #CC5600;">DHCP</span> logs - user visits MTV2 <span style="color: #8AB638;">irregularly</span></p>
+                        <p>Opportunistic connections to the Guest WiFi. Little to no traffic.</p>
+                        <span class="fragment" style="color: #CC5600;">
+                            Badging system logs!!
+                        </span>
+                </section>
+
+                <section>
+                    <h3>Tunning</h3>
+                    <p></p>
+                </section>
+
+                <section>
+                    <span style="color: #CC5600;">Developer looking at production logs after a regression with downtime. Oil canvas, circa 1580</span>
+                    <p><span style="color: #8AB638;">Overheard: looks like Michal</span></p>
+                    <table>
+                        <tr>
+                        <td>
+                            <img src="statics/Cfi9IGmW4AA-PQm.jpg" width=100%" />
+                        </td>
+                        <td>
+                            https://github.com/michalpurzynski
+                            @MichalPurzynski
+                        </td>
+                        </tr>
+                    </table>
+                </section>
+
+
+</div></div>
+       <script src="lib/js/head.min.js"></script>
+        <script src="js/reveal.js"></script>
+
+        <script>
+
+            // Full list of configuration options available at:
+            // https://github.com/hakimel/reveal.js#configuration
+            Reveal.initialize({
+                //width: 1920,
+                //height: 1080,
+                controls: true,
+                progress: true,
+                history: true,
+                center: true,
+
+                transition: 'convex', // none/fade/slide/convex/concave/zoom
+                //transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+                // Optional reveal.js plugins
+                dependencies: [
+                    { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+                    { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+                    { src: 'plugin/zoom-js/zoom.js', async: true },
+                    { src: 'plugin/notes/notes.js', async: true }
+                ]
+            });
+
+        </script>
+
+	</body>
+</html>
