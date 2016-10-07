@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Suricata - shielding little foxes from badness. Lessons from 500 pcaps.</title>
+
+		<meta name="author" content="Michal Purzynski">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<!--link rel="stylesheet" href="css/theme/black.css" id="theme"-->
+		<link rel="stylesheet" href="css/theme/blood.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<p><h4><span style="color: #CC5600;">Suricata - shielding little foxes from badness.</span></h4></p>
+                    <p><h4><span style="color: #CC5600;">Lessons from 500 pcaps.</span></h4></p>
+					<p>
+						<small>Created by <a href="https://log.nusec.eu">Michal Purzynski</a> / <a href="http://twitter.com/michalpurzynski">@michalpurzynski</a></small>
+					</p>
+				</section>
+
+                <section>
+                    <h3>whoami</h3>
+                     <span class="fragment"><p>Part of the team doing enterprise information security</p></span>
+                     <span class="fragment"><p>We don't do product security</p></span>
+                    <span class="fragment"><p>We monitor our infrastructure</p></span>
+                    <span class="fragment"><p>We respond to security investigations and incidents</p></span>
+                    <span class="fragment"><p>We help developers design and implement security controls</p></span>
+                    <span class="fragment"><p>We build tools & services to keep Mozilla secure</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>"A human wireshark"</p></span>
+                </section>
+
+                <section>
+                    <h3>Wait, Suricata reads user's data?!?!</h3>
+                    <span class="fragment"><p>No :-)</p></span>
+                    <span class="fragment"><p>You don't want your Firefox backdoored</p></span>
+                    <span class="fragment"><p>Protect the infrastructure^H^HFox</p></span>
+                    <span class="fragment">
+                        <img src="statics/keep-calm-and-blob-blob-blob.png" width="20%" />
+                    </span>
+                    <span class="fragment"><p>Firefox Sync is unreadable to us - ONLY YOU have keys</p></span>
+                </section>
+
+				<section>
+					<h3>Infrastructure overview</h3>
+					<p>
+                        <span style="color: #CC5600;">1 + 1 </span> data center
+					</p>
+                    <p>
+                        <span style="color: #CC5600;">2</span> "business units"
+                    </p>
+                    <p>
+                        <span style="color: #CC5600;">5</span> offices (with full stack)
+                    </p>
+                    <p>
+                        <span style="color: #CC5600;">AWS</span> on the way
+                    </p>
+				</section>
+
+                <section>
+                    <h3>Infrastructure - capacity</h3>
+                        <table>
+                                <tr>
+                                    <td>2</td><td>full packet capture</td>
+                                </tr>
+                                <tr>
+                                    <td>8</td><td>Suricata - production, stage and rule profiling</td>
+                                </tr>
+                        </table>
+                    <span class="fragment" style="color: #CC5600;"><p>Lots of capacity - because you know, DDoS</p></span>
+                    <span class="fragment" style="color: #CC5600;"><h3>10Gbit/sec shipped to sensors</h3></span>
+                    <span class="fragment" style="color: #CC5600;">I can switch sensor's task in minutes with Ansible</span>
+                    <aside class="notes">
+                        some hardware is almost 3 years old, some brand new
+                        all sensors are single tasked
+                        Ubuntu 14 LTS with latest kernel
+                        We have stage and profiling sensors
+                        I want to have lots of free capacity for the hard time when DDoS comes to at least have partial visibility to fight it
+                    </aside>
+                </section>
+
+                <section>
+                    <h4>One of the keys to Suricata performance?</h4>
+					<pre><code data-trim contenteditable>
+  --------------------------------------------------------------------------
+  Date: 7/29/2015 -- 19:59:33
+  --------------------------------------------------------------------------
+   Num      Rule         Gid      Rev      Ticks        %      Checks   Matches  Max Ticks   Avg Ticks   Avg Match   Avg No Matc
+  -------- ------------ -------- -------- ------------ ------ -------- -------- ----------- ----------- ----------- ------------
+  1        2018785      1        3        645697341    0.02   1310     0        53719652    492898.73   0.00        492898.73  
+  2        2017993      1        8        25724494     0.00   54       0        2684913     476379.52   0.00        476379.52  
+  3        2020865      1        3        56734810492  1.68   137662   0        13646329    412131.24   0.00        412131.24  
+  4        2020318      1        8        176950421    0.01   460      0        2663419     384674.83   0.00        384674.83  
+  5        2019655      1        6        162354131    0.00   545      0        1301429     297897.49   0.00        297897.49  
+                    </code></pre> 
+                    <span class="fragment" style="color: #CC5600;">Profile all the things!</span>
+                </section>
+
+                <section>
+                    <h3>Infrastructure - sensors</h3>
+                    <p>Myricom</p>
+                    <p><span style="color: #CC5600;">64</span> or <span style="color: #CC5600;">128</span>GB RAM</p>
+                    <p><span style="color: #CC5600;">16</span> or <span style="color: #CC5600;">28</span> cores</p>
+                    <p><span style="color: #CC5600;">2.6</span>Ghz Turbo Boost enabled and <strong>active all the time</strong></p>
+                    <p><span style="color: #CC5600;">3.0</span>Ghz effeciently</p>
+                </section>
+
+                <section>
+                    <h3>Supporting infrastructure</h3>
+                    <p>intelligence server, CIF, builders, MozDef</p>
+                </section>
+
+                <section>
+                    <video width="100%" preload="auto" controls>
+                        <source data-src="statics/mozdef_overview_and_ban.mp4" type="video/mp4" />
+                    </video>
+                </section>
+
+                <section>
+                    <h3>An isolated bastion</h3>
+                        <p>Ubuntu 14.04 LTS - <span style="color: #CC5600;">hardened</span> beyond means</p>
+                        <p><span style="color: #CC5600;">minimal</span> target - run only <span style="color: #CC5600;">essentials</span></p>
+                        <p>Hardening against <span style="color: #CC5600;">kernel exploits</span> - our /usr/local/sbin/rc.local is insane</p>
+                        <p>Host based <span style="color: #CC5600;">firewall</span>, strict rules, allow <span style="color: #CC5600;">SSH</span> with <span style="color: #CC5600;">MFA</span> only</p>
+                        <p>SSH with keys, no forwarding, allowed users</p>
+                        <p>future - <span style="color: #CC5600;">sandbox</span> Suricata?</p>
+                </section>
+
+                <section>
+                    <h3>Designed to withstand everything*</h3>
+                    <p>
+                    <table>
+                        <tr>
+                            <td>
+                                <span class="fragment">
+                                    <img src="statics/Ucluelet_Lighthouse_Panorama.jpg" width="50%" />
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                            <span class="fragment">
+                                <blockquote cite="">
+                                    &ldquo;* as humanly possible. Restrictions and exclusions apply.&rdquo;
+                                </blockquote>
+                            </span>
+                            </td>
+                        </tr>
+                    </table>
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Speaking about rc.local</h3>
+					<pre><code data-trim contenteditable>
+                        #!/bin/bash
+
+/opt/snf/sbin/myri_start_stop start myri_timesource=0
+rmmod kvm-intel
+rmmod kvm
+rmmod microcode
+rmmod lp
+rmmod parport
+rmmod 8021q
+rmmod mrp
+rmmod garp
+rmmod bridge
+rmmod stp
+rmmod llc
+rmmod psmouse
+
+modprobe msr
+modprobe xt_state
+modprobe xt_LOG
+modprobe xt_limit
+modprobe xt_tcpudp
+modprobe nf_conntrack_ipv4
+modprobe nf_defrag_ipv4
+modprobe xt_comment
+modprobe nf_conntrack
+modprobe ip6table_filter
+modprobe ip6_tables
+modprobe iptable_filter
+modprobe ip_tables
+modprobe x_tables
+
+iptables-restore < /etc/iptables/rules.v4
+ip6tables-restore < /etc/iptables/rules.v6
+
+echo -n deadline > /sys/block/sda/queue/scheduler
+
+cpuseq=$((`ls -lh /sys/devices/system/cpu/cpu*/cpufreq/scaling_max_freq | wc -l`-1))
+for i in `seq 0 "$cpuseq"`; do cpufreq-set -g performance -c $i; echo -n `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq` > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq; done;
+
+/usr/libexec/tuned/pmqos-static.py cpu_dma_latency=0
+
+sysctl -w kernel.hotplug="/bin/true"
+sysctl -w kernel.modprobe="/bin/true"
+sysctl -w kernel.modules_disabled=1
+sysctl -w kernel.kexec_load_disabled=1
+sysctl -w net.netfilter.nf_conntrack_tcp_be_liberal=0
+sysctl -w net.netfilter.nf_conntrack_tcp_loose=0
+
+for D in $(ls /proc/irq)
+do
+    if [[ -x "/proc/irq/$D" && $D != "0" ]]
+    then
+        echo $D
+        echo 1 > /proc/irq/$D/smp_affinity
+    fi
+done
+for i in `pgrep rcu` ; do taskset -pc 0 $i ; done
+echo 1 > /sys/bus/workqueue/devices/writeback/cpumask
+echo 0 > /sys/bus/workqueue/devices/writeback/numa
+
+/etc/init.d/mozdefmq start
+
+exit 0
+					</code></pre>
+                </section>
+
+                <section>
+                    <h3>BTW - how is your EXTERNAL_NET doing?</h3>
+                    <span class="fragment"><p>EXTERNAL_NET: "any"</p></span>
+                    <span class="fragment"><p>REALLY_EXTERNAL_NET: "!$HOME_NET"</p></span>
+                    <span class="fragment"><p>2019714 "\$EXTERNAL_NET" "$REALLY_EXTERNAL_NET"</p></span>
+                </section>
+                <section>
+                    <span class="fragment">alert http $HOME_NET any -> $REALLY_EXTERNAL_NET any (msg:"ET CURRENT_EVENTS Terse alphanumeric executable downloader high likelihood of being hostile"; flow:established,to_server; content:"/"; http_uri; content:".exe"; distance:1; within:8; fast_pattern; http_uri; content:!"Referer|3a 20|"; nocase; http_header; pcre:"/\/[A-Z]?[a-z]{1,3}[0-9]?\.exe$/U"; classtype:bad-unknown; sid:2019714; rev:3;)
+                    <p></p></span>
+                </section>
+                <section>
+                    <h3>Pulledpork rulez - modifysid</h3>
+                    <span class="fragment"><p>* "\$EXTERNAL_NET any \(msg:"ET MALWARE" "$REALLY_EXTERNAL_NET any (msg:"ET MALWARE"
+                                </p></span>
+                                <span class="fragment"><p>worm, trojan, p2p, games, mobile_malware</p></span>
+                </section>
+
+                <section>
+                    <h3>Two approaches to signature detection</h3>
+                    <span class="fragment"><p>Use only those signatures you need</p></span>
+                    <span class="fragment"><p>Use as many signatures as you can</p></span>
+                </section>
+
+                <section>
+                    <h3>Use only signatures you need</h3>
+                                    <span class="fragment"><p>nsm12 :: /tmp/rules » ls *.rules | wc -l</p></span>
+                                     <span class="fragment" style="color: #CC5600;"><p>54</p></span>
+                    <span class="fragment"><p>cat *.rules | grep -E -v '^#|^$' | wc -l</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>28281</p></span>
+                                                        <span class="fragment">
+                        <img src="statics/needle_haystack.jpg" width="50%" />
+                    </span>
+                </section>
+
+                <section>
+                    <h3>Use as many signatures as you can</h3>
+                </section>
+
+                <section>
+                    <h3></h3>
+                    <img src="statics/kibana-flood.jpg" width="100%" />
+                </section>
+
+                <section>
+                    <h3>Why correlation is hard</h3>
+                    <img src="statics/55090302.jpg" width="50%" />
+                </section>
+                <section>
+                    <h3>What is it?</h3>
+                    <span class="fragment">A host connecting to thousands of domains</span>
+                    <span class="fragment"><p><span class="fragment" style="color: #CC5600;">normal company</span> - trying to talk to CnC</p></span>
+                    <span class="fragment"><p><span class="fragment" style="color: #CC5600;">normal company</span> - scanning, looking for infection targets</p></span>
+                    <span class="fragment"><p><span class="fragment" style="color: #CC5600;">Mozilla</span> - some is testing new SSL stack</p></span>
+                    </section>
+                <section>
+                    <h3>He's been doing NSM alerts all day</h3>
+                    <img src="statics/firefox_logo-only_RGB-300dpi.jpg" width="30%" />
+                    <span class="fragment"><p>Mozilla - a place where nothing is what it looks like</p></span>
+                </section>
+                <section>
+                    <h3>First step - alert on any intel hits</h3>
+                    <span class="fragment"><p>and get a constant stream of alerts</p></span>
+                    <span class="fragment"><p>good luck investigating that</p></span>
+                    <span class="fragment"><p>DNS prefetching in browsers (usually multiple IP) - resolved but didn’t connect</p></span>
+                </section>
+                <section>
+                    <h3>Why this is not an alert</h3>
+                    <p><span class="fragment" style="color: #CC5600;">ET TROJAN DNS Reply Sinkhole - Anubis - 195.22.26.192/26</span></p>
+                    <p><span class="fragment">Because DNS prefetching strikes again</span></p>
+                    <p><span class="fragment">Because of the cloud</span></p>
+                    <p><span class="fragment">Because that IP parks domains</span></p>
+                    <p><span class="fragment" style="color: #CC5600;">Did anyone actually connect there?</span></p>
+                </section>
+                <section>
+                    <h3>A word about intel lists</h3>
+                    <span class="fragment"><p>Who is a big exe source?</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>Mozilla, Akamai, AWS</p></span>
+                    <span class="fragment"><p>Where are bitcoins mined?</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>On hijacked AWS instances with poor security</p></span>
+                    <span class="fragment"><p>Guilty - algoritms creating lists</p></span>
+                    <span class="fragment"><p>"ET POLICY PE EXE or DLL Windows file download"</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>You want intel lists to help with investigation, not as a detection mechanism</p></span>
+                </section>
+
+                <section>
+                    <h3>Alert on multiple Intel hits</h3>
+                    <span class="fragment"><p>and get a brand new scanner detection that constantly goes off</p></span>
+                </section>
+
+                <section>
+                    <h3>DNS + connection?</h3>
+                    <span class="fragment"><p>Much better!!</p></span>
+                    <span class="fragment"><p>challenge - the same site hosts both malicious code and harmless code</p></span>
+                    <span class="fragment"><p>DGA will sneak right past your defenses</p></span>
+                </section>
+
+                <section>
+                    <h3>Signature + intel hit</h3>
+                    <span class="fragment"><p>IDS alert plus an intel hit for the same internal IP</p></span>
+                    <span class="fragment"><p>challenge - might be IP src and/or IP dst</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>Why is old java talking to a bad guy?</p></span>
+                </section>
+
+                <section>
+                    <h3>Multiple signatures</h3>
+                    <span class="fragment"><p>Many signatures for the same internal IP</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>Why is old Java fetching exe?</p></span>
+                </section>
+
+                <section>
+<span class="fragment"><p>alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"ET POLICY Vulnerable Java Version 1.7.x Detected"; <span class="fragment" style="color: #CC5600;">flow:established,to_server;</span> content:"Java/1.7.0_"; http_user_agent; content:!"85"; within:2; http_user_agent; flowbits:set,ET.http.javaclient.vulnerable; threshold: type limit, count 2, seconds 300, track by_src; classtype:bad-unknown; sid:2014297; rev:37;)</p></span>
+<span class="fragment"><p>alert tcp $REALLY_EXTERNAL_NET any -> $HOME_NET any (msg:"ET POLICY PE EXE or DLL Windows file download"; <span class="fragment" style="color: #CC5600;">flow:established,to_client;</span> content:"MZ"; byte_jump:4,58,relative,little; content:"PE|00 00|"; distance:-64; within:4; flowbits:set,ET.http.binary; classtype:policy-violation; sid:2000419; rev:22;)</p></span>
+                </section>
+
+                <section>
+                    <h3>MIME missmatch</h3>
+                    <span class="fragment"><p>alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"PDF download claimed but not PDF"; flow:established,to_client; content:"GET"; http_method; <span class="fragment" style="color: #CC5600;">fileext:"pdf";</span><span class="fragment" style="color: #CC5600;"> filemagic:!"PDF document";</span> filestore; sid:1; rev:1;)</p></span>
+                    <span class="fragment"><p>or</p></span>
+                    <span class="fragment"><p>ETPRO TROJAN EXE/SCR disguised as compressed PDF</p></span>
+                    <span class="fragment"><p>and friends</p></span>
+                    <span class="fragment"><p>grep your ruleset</p></span>
+                </section>
+
+                <section>
+                    <h3>TLS matching</h3>
+                    <span class="fragment"><p>Yet another IOC sink - subject, issuer, fingerprint</p></span>
+                    <span class="fragment"><p>Issuer mismatch (for your corporate apps)</p></span>
+                    <span class="fragment" style="color: #CC5600;"><p>https://home.regit.org/2012/08/tls-fingerprint-store</p></span>
+                </section>
+
+                <section>
+                    <h3>Files MD5</h3>
+                    <span class="fragment"><p>Let Suricata consume intels. She likes them!</p></span>
+                        <img src="statics/suricata_eating_egg.jpg" width="40%" />
+                    <span class="fragment"><p>filemd5:filename;</p></span>
+                </section>
+
+                <section>
+                    <h3>Bulk extract and scan</h3>
+                    <p><span class="fragment">exe, pdf, office, vbs, scr</span><span class="fragment" style="color: #CC5600;"> -> can be scanned automatically</span></p>
+                    <span class="fragment"><p>Team Cymru, Virus Total, Yara</p></span>
+                    <span class="fragment"><p>PDF - PeePDF, Pdfid, pdf-parser.py</p></span>
+                    <span class="fragment"><p>MS Office - OfficeMalScanner</p></span>
+                    <span class="fragment"><p>Lockheed Martin LaikaBOSS, Emerson fsf</p></span>
+                </section>
+
+                <section>
+                    <h3>
+                        Malware! pcaps! You promised 500!
+                    </h3>
+                </section>
+
+                <section>
+                    <h3>Browsing infosec sites at 4AM, I've noticed...</h3>
+                </section>
+
+                <section>
+                    <h3>Angler-EK-sends-Bedep-events</h3>
+                        <img src="statics/2015-10-18-Angler-EK-sends-Bedep-events.jpg" width="100%" />
+                </section>
+
+                <section>
+                    <h3>Nuclear-EK-events</h3>
+                        <img src="statics/2015-10-19-052F-gate-Nuclear-EK-events.jpg" width="100%" />
+                </section>
+
+                <section>
+                    <h3>BizCN-gate-actor-Nuclear-EK-events</h3>
+                    <img src="statics/2015-10-18-BizCN-gate-actor-Nuclear-EK-events.jpg" width="100%" />
+                </section>
+
+                <section>
+                <h3>Let's test our theories</h3>
+                    <span class="fragment"><p>Fetched entire malware-traffic-analysis.net</p></span>
+                    <span class="fragment"><p>Ran through Suricata with ET Pro ruleset</p></span>
+                    <span class="fragment"><p>Each file separately, save results to a different JSON and read back into redis</p></span>
+                </section>
+
+                <section>
+                    <h3>Events per infection?</h3>
+                    <img src="statics/chart.jpg" width="100%" />
+                </section>
+
+                <section>
+                <h3>Can haz dashboards.</h3>
+                    <span class="fragment"><p>Create many and keep them focused</p></span>
+                                    <span class="fragment"><p>nsm12 :: /tmp/rules » cat downloaded.rules| grep -i phish | grep -E -v '^#' | wc -l</p></span>
+                                     <span class="fragment" style="color: #CC5600;"><p>273</p></span>
+                <span class="fragment"><p>Vulnerable Java, JAR - <span class="fragment" style="color: #CC5600;">556</span></p></span>
+                <span class="fragment"><p>Flash, Silverlight - <span class="fragment" style="color: #CC5600;">291</span></p></span>
+                </section>
+
+                <section>
+                    <img src="statics/63424805.jpg" width="30%" />
+                    <p>https://github.com/michalpurzynski/ansible-nsm</p>
+                    <p>@MichalPurzynski</p>
+                </section>
+
+</div></div>
+       <script src="lib/js/head.min.js"></script>
+        <script src="js/reveal.js"></script>
+
+        <script>
+
+            // Full list of configuration options available at:
+            // https://github.com/hakimel/reveal.js#configuration
+            Reveal.initialize({
+                controls: true,
+                progress: true,
+                history: true,
+                center: true,
+
+                transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+                // Optional reveal.js plugins
+                dependencies: [
+                    { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+                    { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+                    { src: 'plugin/zoom-js/zoom.js', async: true },
+                    { src: 'plugin/notes/notes.js', async: true }
+                ]
+            });
+
+        </script>
+
+	</body>
+</html>
