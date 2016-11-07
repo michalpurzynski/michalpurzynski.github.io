@@ -45,14 +45,12 @@
                     <p><h4><span style="color: #CC5600;">Suricata and Bro fighting malware together</span></h4></p>
 					<p>
 						<small>Created by <a href="https://log.nusec.eu">Michal Purzynski</a> / <a href="http://twitter.com/michalpurzynski">@michalpurzynski</a></small>
+						<small>Mozilla Corporation. Enterprise Information Security team.</small>
 					</p>
-					<p>
-						<small><a href="https://github.com/michalpurzynski/">Code is here - https://github.com/michalpurzynski</a></small>
                     <aside class="notes">
                         Hello, I'm MP from the Mozilla Enterprise Information Security team. I will be talking about two great friends at Mozilla - Bro and Suricata.
                         Throught the presentation I will show some Bro scripts and Suricata rules, they are all opensource and you can find them on github, so feel free to take a look.
                     </aside>
-					</p>
 				</section>
 
                 <section>
@@ -213,7 +211,7 @@ bro@nsm1-mtv2:/nsm/bro/logs/2016-08-22$ zcat ../2016-08-*/dhcp.* | egrep 'a0:99:
                 <section>
                     <h3>How do you avoid false positives?</h3>
                     <p>Change direction by category</p>
-                    <p>Catch off ones</p>
+                    <p>Catch one offs</p>
                     <p>Example: TROJAN will be only active for</p>
                     <p><span style="color: #CC5600;">REALLY_EXTERNAL_NET:</span> -&gt <span style="color: #8AB638;">"!$HOME_NET"</span></p>
                     <p><span style="color: #8AB638;">"!$HOME_NET"</span> -&gt <span style="color: #CC5600;">REALLY_EXTERNAL_NET:</span></p>
@@ -249,8 +247,8 @@ bro@nsm1-mtv2:/nsm/bro/logs/2016-08-22$ zcat ../2016-08-*/dhcp.* | egrep 'a0:99:
                 </section>
 
                 <section>
-                    <h3>Rule tunnig tips</h3>
-                    <p>Disable unnecessary cateories - disablesid.conf</p>
+                    <h3>Rule tunig tips</h3>
+                    <p>Disable unnecessary categories - disablesid.conf</p>
                     <p>Disable or silence only the most noisy sids</p>
                     <p>Hint: it's OK to not be perfect!</p>
                     <p>Rewrite by category</p>
@@ -599,7 +597,7 @@ alert tcp any any -> any 53 (msg:"SURICATA non-DNS-TCP on TCP port 53"; flow:to_
                 <section>
                     <h3>Takeaways</h3>
                     <p>Impossible to investigate every single match</p>
-                    <p>Impossive to tune your ruleset so you only have 8h * 60m = 480 matches per day (a match per minute)</p>
+                    <p>Impossible to tune your ruleset so you only have 8h * 60m = 480 matches per day (a match per minute)</p>
                 </section>
 
                 <section>
@@ -626,8 +624,6 @@ alert tcp any any -> any 53 (msg:"SURICATA non-DNS-TCP on TCP port 53"; flow:to_
                         </tr>
                     </table>
                 </section>
-
-
 </div></div>
        <script src="lib/js/head.min.js"></script>
         <script src="js/reveal.js"></script>
